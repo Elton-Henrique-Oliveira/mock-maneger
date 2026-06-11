@@ -1,0 +1,10 @@
+[
+  {
+    "name": "my-service",
+    "collections": [
+      "mocks",
+      "kafka_messages_mock_inbound",
+      "kafka_messages_mock"
+    ]
+  }
+]

@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mock Manager</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"/>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+      --border: #2e3250; --accent: #6c63ff; --accent-h: #574fd6;
+      --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+      --text: #e2e8f0; --muted: #8892a4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* LOGIN */
+    #login { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 36px; width: 100%; max-width: 440px; }
+    .login-box h1 { font-size: 22px; margin-bottom: 4px; }
+    .login-box h1 span { color: var(--accent); }
+    .login-box p { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+    /* FORM */
+    .fg { margin-bottom: 14px; }
+    .fg label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .fg input, .fg select, .fg textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; font-family: inherit; }
+    .fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--accent); }
+    .fg textarea { resize: vertical; min-height: 80px; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s, background .15s; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-h); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger  { background: var(--danger);  color: #fff; }
+    .btn-warning { background: var(--warning); color: #000; }
+    .btn-ghost   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); }
+    .btn-full    { width: 100%; justify-content: center; }
+    .btn-sm      { padding: 5px 10px; font-size: 12px; }
+
+    .alert { padding: 10px 13px; border-radius: 8px; font-size: 13px; margin-top: 10px; }
+    .alert-error   { background: #3f1515; border: 1px solid var(--danger);  color: #fca5a5; }
+    .alert-success { background: #14372a; border: 1px solid var(--success); color: #86efac; }
+
+    /* APP */
+    #app { display: none; }
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .topbar h2 { font-size: 15px; font-weight: 700; flex: 1; }
+    .topbar h2 span { color: var(--accent); }
+    .topbar-info { font-size: 12px; color: var(--muted); }
+    .topbar-collection { font-size: 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--text); }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; padding: 16px 24px 0; flex-wrap: wrap; }
+    .search { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none; flex: 1; max-width: 320px; }
+    .search:focus { border-color: var(--accent); }
+
+    /* TABLE */
+    .table-wrap { margin: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--surface2); }
+    th { padding: 11px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
+    td { padding: 11px 14px; font-size: 13px; border-top: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: var(--surface2); }
+    .id-cell { font-family: monospace; font-size: 12px; color: var(--muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .json-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; color: var(--muted); }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .empty { text-align: center; padding: 48px; color: var(--muted); }
+
+    /* BADGES */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge-on      { background: #14372a; color: var(--success); }
+    .badge-off     { background: #3f1515; color: var(--danger); }
+    .badge-pending { background: #3f2a0a; color: var(--warning); }
+    .badge-done    { background: #14372a; color: var(--success); }
+
+    /* MODAL */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 640px; max-width: 96vw; max-height: 92vh; overflow-y: auto; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { font-size: 16px; }
+    .modal-head button { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+    .modal-head button:hover { color: var(--text); }
+    .modal-body { padding: 22px; }
+    .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+    .CodeMirror { border-radius: 8px; font-size: 13px; height: 280px; }
+
+    /* FRIENDLY CARDS */
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; padding: 16px 24px; }
+    .mock-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .mock-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+    .mock-card-title { font-weight: 600; font-size: 14px; word-break: break-all; }
+    .mock-card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .mock-card-body { font-size: 12px; color: var(--muted); font-family: monospace; background: var(--bg); border-radius: 6px; padding: 8px 10px; max-height: 80px; overflow: hidden; text-overflow: ellipsis; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all; }
+    .mock-card-footer { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; }
+    .toggle { position: relative; width: 42px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--surface2); border-radius: 24px; cursor: pointer; transition: background .2s; border: 1px solid var(--border); }
+    .toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: transform .2s, background .2s; }
+    .toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(18px); background: #fff; }
+
+    /* TUTORIAL */
+    .tut-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 12px 16px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
+    .tut-tab:hover { color: var(--text); }
+    .tut-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .tut-panel { display: none; }
+    .tut-panel.active { display: block; }
+    .tut-section { margin-bottom: 20px; }
+    .tut-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .tut-text { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+    .tut-text code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; color: var(--success); font-size: 12px; }
+    .tut-code { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #a8d8a8; line-height: 1.6; overflow-x: auto; white-space: pre; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <h1>Mock <span>Manager</span></h1>
+    <p>Conecte ao MongoDB e gerencie qualquer collection</p>
+    <div class="fg">
+      <label>MongoDB URI</label>
+      <input id="uri" type="password" placeholder="mongodb+srv://user:pass@host/db"/>
+    </div>
+    <div class="fg">
+      <label>Database</label>
+      <select id="database" onchange="onDbChange()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">
+        <option value="">Carregando...</option>
+      </select>
+    </div>
+    <div class="fg" id="fg-db-manual" style="display:none">
+      <label>Database (manual)</label>
+      <input id="databaseManual" type="text" placeholder="meu-database"/>
+    </div>
+    <div class="fg">
+      <label>Collection</label>
+      <select id="collectionInput" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">
+        <option value="">Selecione um database</option>
+      </select>
+    </div>
+    <div class="fg" id="fg-col-manual" style="display:none">
+      <label>Collection (manual)</label>
+      <input id="collectionManual" type="text" placeholder="minha-collection"/>
+    </div>
+    <div style="margin-bottom:14px">
+      <button type="button" class="btn btn-ghost btn-sm" id="btnManualToggle" onclick="toggleManual()">✏️ Digitar manualmente</button>
+    </div>
+    <div class="fg">
+      <label>Porta do Proxy</label>
+      <input id="proxyPort" type="text" placeholder="3333" value="3333"/>
+    </div>
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:8px">
+      <label class="toggle" style="margin:0"><input type="checkbox" id="rememberLogin"/><span class="toggle-slider"></span></label>
+      <span style="font-size:13px;color:var(--muted)">Lembrar dados por 7 dias</span>
+    </div>
+    <button class="btn btn-primary btn-full" id="connectBtn" onclick="connect()">Conectar</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button type="button" class="btn btn-ghost btn-full" onclick="openTutorial()">📚 Como implementar mocks</button>
+      <button type="button" class="btn btn-ghost" style="flex-shrink:0" onclick="openSettings()">⚙️</button>
+    </div>
+    <div id="loginAlert"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <h2>Mock <span>Manager</span></h2>
+    <span class="topbar-collection" id="topCollection"></span>
+    <span class="topbar-info" id="topDb"></span>
+    <button class="btn btn-ghost btn-sm" onclick="openTutorial()">📚 Como implementar</button>
+    <button class="btn btn-ghost btn-sm" onclick="changeDatabase()">Trocar database</button>
+    <button class="btn btn-ghost btn-sm" onclick="changeCollection()">Trocar collection</button>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <input class="search" id="search" placeholder="Buscar em qualquer campo..." oninput="filterDocs()"/>
+    <input type="number" id="queryLimit" value="50" min="1" max="5000" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;" title="Limite de documentos"/>
+    <span style="font-size:12px;color:var(--muted)">docs</span>
+    <div id="filter-type-wrap" style="display:none;gap:6px;align-items:center">
+      <button class="btn btn-primary btn-sm" id="ftype-all"   onclick="setTypeFilter('all')">Todos</button>
+      <button class="btn btn-ghost  btn-sm" id="ftype-webclient" onclick="setTypeFilter('webclient')">🌐 WebClient</button>
+      <button class="btn btn-ghost  btn-sm" id="ftype-external"  onclick="setTypeFilter('external')">👤 Por Usuário</button>
+      <button class="btn btn-ghost  btn-sm" id="ftype-xmock"     onclick="setTypeFilter('xmock')">🔖 X-MOCK-ID</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="load()">↻ Atualizar</button>
+    <button class="btn btn-primary btn-sm" id="btnNovo" onclick="handleNew()">+ Novo</button>
+  </div>
+
+  <!-- VIEW GENÉRICA -->
+  <div id="view-generic">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:180px">_id</th><th>Documento</th><th style="width:150px">Ações</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VIEW: mocks (API Mocks) -->
+  <div id="view-mocks" style="display:none">
+    <div class="cards-grid" id="cards-mocks"></div>
+  </div>
+
+  <!-- VIEW: kafka_messages_mock_inbound -->
+  <div id="view-kafka-inbound" style="display:none">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tópico</th><th>Key</th><th>Payload</th><th style="width:120px">Status</th><th style="width:200px">Criado em</th><th style="width:180px">Ações</th></tr></thead>
+        <tbody id="tbody-kafka-inbound"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VIEW: kafka_messages_mock (outbound) -->
+  <div id="view-kafka-outbound" style="display:none">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tópico</th><th>Key</th><th>Value</th><th style="width:200px">Timestamp</th><th style="width:80px">Ações</th></tr></thead>
+        <tbody id="tbody-kafka-outbound"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GENÉRICO (editar/criar) -->
+<div class="overlay" id="modalDoc">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Novo documento</h3>
+      <button onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg" id="idFieldGroup">
+        <label>_id <span style="color:var(--muted);font-weight:400">(opcional — vazio gera automaticamente)</span></label>
+        <input id="docId" type="text" placeholder="meu-id-customizado"/>
+      </div>
+      <textarea id="editor"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="save()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VISUALIZAR -->
+<div class="overlay" id="modalView">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Visualizar</h3>
+      <button onclick="document.getElementById('modalView').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body"><textarea id="viewEditor"></textarea></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalView').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL API MOCK -->
+<div class="overlay" id="modalApiMock">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalApiTitle">Novo API Mock</h3>
+      <button onclick="document.getElementById('modalApiMock').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="apiMockEditId"/>
+
+      <!-- TIPO -->
+      <div class="fg">
+        <label>Tipo de Mock</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary btn-sm" id="tab-webclient" onclick="setMockType('webclient')">🌐 WebClient (genérico)</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="tab-external" onclick="setMockType('external')">👤 WebClient por usuário</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="tab-xmock" onclick="setMockType('xmock')">🔖 X-MOCK-ID</button>
+        </div>
+        <div id="mock-type-hint" style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6"></div>
+      </div>
+
+      <div class="fg" id="fg-apiMockId">
+        <label id="apiMockIdLabel">ID</label>
+        <input id="apiMockId" type="text" placeholder=""/>
+      </div>
+      <div class="fg">
+        <label>Descrição</label>
+        <input id="apiMockDesc" type="text" placeholder="O que esse mock representa?"/>
+      </div>
+
+      <!-- catalogo de endpoints (webclient + external) -->
+      <div id="fg-catalog" style="display:none;margin-bottom:14px">
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:5px">📖 Selecionar do catálogo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+        <select id="catalogSelect" onchange="onCatalogSelect()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">
+          <option value="">Selecione um endpoint...</option>
+        </select>
+      </div>
+
+      <!-- só para xmock: importar contrato graphql -->
+      <div class="fg" id="fg-graphql" style="display:none">
+        <label>📌 Importar contrato GraphQL <span style="color:var(--muted);font-weight:400">(opcional — gera o payload automaticamente)</span></label>
+        <textarea id="graphqlContract" style="font-family:monospace;font-size:12px;min-height:100px" placeholder="Cole aqui sua query ou mutation GraphQL..."></textarea>
+        <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="parseGraphQL()">⚡ Gerar payload do contrato</button>
+      </div>
+
+      <!-- só para external -->
+      <div class="fg" id="fg-endpointId" style="display:none">
+        <label>EndpointId <span style="color:var(--danger);font-weight:600">*</span> <span style="color:var(--muted);font-weight:400">(deve ser idêntico ao cadastrado no backend)</span></label>
+        <input id="apiMockEndpointId" type="text" placeholder="GET:/v1/products/stock-status"/>
+      </div>
+      <div class="fg" id="fg-users" style="display:none">
+        <label>Usuários permitidos <span style="color:var(--muted);font-weight:400">(separados por vírgula)</span></label>
+        <input id="apiMockUsers" type="text" placeholder="12345, 67890"/>
+      </div>
+
+      <div class="fg">
+        <label class="toggle-wrap">
+          <span>Habilitado</span>
+          <label class="toggle"><input type="checkbox" id="apiMockEnabled" checked/><span class="toggle-slider"></span></label>
+        </label>
+      </div>
+      <div class="fg">
+        <label>Payload (JSON de resposta)</label>
+        <textarea id="apiMockPayload"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalApiMock').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveApiMock()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KAFKA INBOUND -->
+<div class="overlay" id="modalKafkaInbound">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalKafkaTitle">Novo Evento Kafka</h3>
+      <button onclick="document.getElementById('modalKafkaInbound').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label>Tópico</label>
+        <input id="kafkaTopic" type="text" placeholder="order-created"/>
+      </div>
+      <div class="fg">
+        <label>Key <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+        <input id="kafkaKey" type="text" placeholder="chave-opcional"/>
+      </div>
+      <div class="fg">
+        <label>Payload (JSON do evento)</label>
+        <textarea id="kafkaPayload"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalKafkaInbound').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveKafkaInbound()">Enviar Evento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIGURAÇÕES -->
+<div class="overlay" id="modalSettings">
+  <div class="modal" style="width:680px;max-width:96vw">
+    <div class="modal-head">
+      <h3>⚙️ Configurações</h3>
+      <button onclick="document.getElementById('modalSettings').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px">
+        <button class="tut-tab active" id="cfg-tab-proxy" onclick="setCfgTab('proxy')">🔧 Proxy</button>
+        <button class="tut-tab" id="cfg-tab-databases" onclick="setCfgTab('databases')">🗄️ Databases</button>
+      </div>
+
+      <!-- ABA PROXY -->
+      <div id="cfg-proxy">
+        <div class="fg">
+          <label>Porta do Proxy</label>
+          <input id="cfgPort" type="text" placeholder="3333"/>
+        </div>
+        <div class="fg">
+          <label>Endpoints Catalog URL <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+          <input id="cfgCatalogUrl" type="text" placeholder="http://localhost:8080/mock-catalog"/>
+        </div>
+        <div class="fg">
+          <label class="toggle-wrap">
+            <span>Permitir deletar documentos</span>
+            <label class="toggle"><input type="checkbox" id="cfgAllowDelete"/><span class="toggle-slider"></span></label>
+          </label>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:4px">⚠️ Alterações na porta só têm efeito após reiniciar o proxy (<code>end.bat</code> + <code>start.bat</code>).</p>
+      </div>
+
+      <!-- ABA DATABASES -->
+      <div id="cfg-databases" style="display:none">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Edite a lista de databases e collections que aparecem no seletor de login. Cada item precisa ter <code>name</code> e <code>collections</code>.</p>
+        <textarea id="cfgDatabases" style="font-family:monospace;font-size:12px;min-height:260px;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);outline:none;resize:vertical"></textarea>
+        <div id="cfgDbError" style="display:none;margin-top:8px" class="alert alert-error"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalSettings').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" id="cfgSaveBtn" onclick="saveSettings()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TUTORIAL -->
+<div class="overlay" id="modalTutorial">
+  <div class="modal" style="width:780px;max-width:96vw">
+    <div class="modal-head">
+      <h3>📚 Como implementar Mocks em Kotlin</h3>
+      <button onclick="document.getElementById('modalTutorial').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+
+      <!-- ABAS -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 22px">
+        <button class="tut-tab active" id="tut-tab-webclient" onclick="setTutTab('webclient')">🌐 WebClient Genérico</button>
+        <button class="tut-tab" id="tut-tab-external" onclick="setTutTab('external')">👤 Por Usuário</button>
+        <button class="tut-tab" id="tut-tab-xmock" onclick="setTutTab('xmock')">🔖 X-MOCK-ID</button>
+      </div>
+
+      <!-- WEBCLIENT GENERICO -->
+      <div class="tut-panel active" id="tut-webclient" style="padding:22px;overflow-y:auto;max-height:60vh">
+        <div class="tut-section">
+          <div class="tut-title">🎯 O que faz</div>
+          <p class="tut-text">Intercepta chamadas de saída do serviço para APIs externas via <code>WebClient</code>. Quando habilitado, o serviço <b>não faz a chamada HTTP real</b> — retorna direto o payload do MongoDB.</p>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">⚙️ Pré-requisitos</div>
+          <p class="tut-text">Ative no <code>application-local.yml</code>:</p>
+          <pre class="tut-code">mocks:
+  webclient:
+    enabled: true</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">📝 Como o ID do mock é gerado</div>
+          <p class="tut-text">O filtro intercepta automaticamente qualquer chamada feita via <code>WebClient</code> e usa <code>MÉTODO:/caminho</code> como chave de busca no MongoDB.</p>
+          <pre class="tut-code">// O filtro captura assim internamente:
+val endpointId = "${request.method().name}:${request.url().path}"
+// Exemplo: "GET:/v1/products/stock-status"</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">🔧 Implementação do Client</div>
+          <p class="tut-text">Nenhuma mudança necessária no client existente. O <code>MockWebClientFilter</code> é injetado automaticamente no <code>AbstractWebClient</code>.</p>
+          <pre class="tut-code">@Service
+class ProductStockClientImpl(
+    @Value("\${client.catalog.url}")
+    private val url: String
+) : AbstractWebClient(url) {
+
+    override fun mapError(response: ClientResponse): Mono&lt;ClientResponse&gt; { ... }
+
+    fun getStockStatus(productId: String): ProductStockDto {
+        return getClient(WebClientConstants.CONTENT_TYPE_APPLICATION_JSON)
+            .get()
+            .uri("/v1/products/stock-status?productId=$productId")
+            .retrieve()
+            .bodyToMono(ProductStockDto::class.java)
+            .block()!!
+    }
+}</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">🌱 Documento no MongoDB</div>
+          <pre class="tut-code">{
+  "_id": "GET:/v1/products/stock-status",
+  "description": "Mock status de estoque do produto",
+  "enabled": true,
+  "payload": {
+    "productId": "prod-001",
+    "available": true,
+    "quantity": 42
+  },
+  "externalMockProperties": null
+}</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">⚠️ Atenção</div>
+          <p class="tut-text">O <code>_id</code> deve ser <b>exatamente igual</b> ao método HTTP + caminho da URI chamada pelo WebClient, sem query params.</p>
+        </div>
+      </div>
+
+      <!-- WEBCLIENT POR USUARIO -->
+      <div class="tut-panel" id="tut-external" style="padding:22px;overflow-y:auto;max-height:60vh">
+        <div class="tut-section">
+          <div class="tut-title">🎯 O que faz</div>
+          <p class="tut-text">Retorna payloads diferentes por usuário específico. O client injeta <code>GetExternalMockById</code> e consulta o MongoDB antes de fazer a chamada real.</p>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">⚙️ Pré-requisitos</div>
+          <p class="tut-text">Nenhuma configuração extra no yml. A busca usa a collection <code>mocks</code> com query por <code>externalMockProperties.endpointId</code> + <code>allowedUsers</code>.</p>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">📝 Implementação do Client</div>
+          <p class="tut-text">Crie uma implementação mock que injeta <code>GetExternalMockById</code> e use <code>@ConditionalOnProperty</code> para ativá-la em ambiente local:</p>
+          <pre class="tut-code">// Interface do client
+interface OrderPricingClient {
+    fun getPricing(orderId: String): OrderPricingDto
+}
+
+// Implementação real
+@Service
+@ConditionalOnProperty("mocks.pricing.enabled", havingValue = "false", matchIfMissing = true)
+class OrderPricingClientImpl(
+    @Value("\${client.pricing.url}") private val url: String
+) : OrderPricingClient, AbstractWebClient(url) {
+
+    override fun getPricing(orderId: String): OrderPricingDto {
+        return getClient(WebClientConstants.CONTENT_TYPE_APPLICATION_JSON)
+            .get()
+            .uri("/v1/orders/pricing?orderId=$orderId")
+            .retrieve()
+            .bodyToMono(OrderPricingDto::class.java)
+            .block()!!
+    }
+}
+
+// Implementação mock
+@Service
+@ConditionalOnProperty("mocks.pricing.enabled", havingValue = "true")
+class OrderPricingClientMock(
+    private val getExternalMockById: GetExternalMockById
+) : OrderPricingClient {
+
+    override fun getPricing(orderId: String): OrderPricingDto {
+        return getExternalMockById.execute(
+            endpointId = "GET:/v1/orders/pricing",
+            userIdentifier = orderId,
+            clazz = OrderPricingDto::class.java
+        ) ?: throw MockNotFoundException(orderId, "GET:/v1/orders/pricing")
+    }
+}</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">⚙️ yml local</div>
+          <pre class="tut-code">mocks:
+  pricing:
+    enabled: true</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">🔍 Como o MockRepository consulta o MongoDB</div>
+          <p class="tut-text">O <code>GetExternalMockByIdImpl</code> usa o <code>MockRepository</code> que faz a seguinte query na collection <code>mocks</code>:</p>
+          <pre class="tut-code">// Query executada internamente
+{
+  "externalMockProperties.endpointId": "GET:/v1/orders/pricing",
+  "externalMockProperties.allowedUsers": { "$in": ["order-001"] },
+  "enabled": true
+}
+
+// Implementação real do repositório
+@Repository
+interface MockRepository&lt;T&gt; : MongoRepository&lt;Mock&lt;T&gt;, String&gt; {
+
+    @Query(
+        "{ " +
+        "  'externalMockProperties.endpointId': ?0, " +
+        "  'externalMockProperties.allowedUsers': { '\$in': [ ?1 ] }, " +
+        "  'enabled': true " +
+        "  } "
+    )
+    fun findExternalMockByEndpointIdAndAllowedUsersContainsAndEnabledTrue(
+        endpointId: String,
+        userIdentifier: String
+    ): Mock&lt;T&gt;?
+
+    fun findMockByIdAndEnabledTrue(id: String): Mock&lt;T&gt;?
+}</pre>
+          <p class="tut-text" style="margin-top:8px">O <code>userIdentifier</code> passado é o identificador do recurso (ex: <code>orderId</code>) — ele precisa estar na lista <code>allowedUsers</code> do documento MongoDB para o mock ser retornado.</p>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">🌱 Documento no MongoDB</div>
+          <pre class="tut-code">{
+  "_id": "mock-pricing-order-001",
+  "description": "Mock precificação para pedido order-001",
+  "enabled": true,
+  "payload": {
+    "orderId": "order-001",
+    "discount": 10.5,
+    "finalPrice": 89.50
+  },
+  "externalMockProperties": {
+    "endpointId": "GET:/v1/orders/pricing",
+    "allowedUsers": ["order-001", "order-002"]
+  }
+}</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">⚠️ Atenção</div>
+          <p class="tut-text">O <code>endpointId</code> em <code>externalMockProperties</code> deve ser <b>idêntico</b> ao valor passado na chamada <code>getExternalMockById.execute(endpointId = ...)</code> no client mock.</p>
+        </div>
+      </div>
+      <div class="tut-panel" id="tut-xmock" style="padding:22px;overflow-y:auto;max-height:60vh">
+        <div class="tut-section">
+          <div class="tut-title">🎯 O que faz</div>
+          <p class="tut-text">Intercepta requisições <b>recebidas</b> pelo próprio serviço. O cliente envia o header <code>X-MOCK-ID</code> e recebe o payload cadastrado no MongoDB — sem executar nenhuma lógica de negócio.</p>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">⚙️ Configuração</div>
+          <p class="tut-text">O <code>MockInterceptor</code> já está ativo em todos os perfis exceto <code>production</code> via <code>@Profile("!production")</code>. Nenhuma configuração adicional necessária.</p>
+          <pre class="tut-code">// Já existe no projeto — nenhuma mudança necessária
+@Component
+@Profile("!production")
+class MockInterceptor(
+    private val getInternalMockById: GetInternalMockById,
+    private val objectMapper: ObjectMapper
+) : HandlerInterceptor {
+
+    override fun preHandle(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        handler: Any
+    ): Boolean {
+        val mockHeader = request.getHeader("X-MOCK-ID") ?: return true
+        val mock = getInternalMockById.execute(mockHeader) ?: return true
+        response.status = 200
+        response.contentType = "application/json;charset=UTF-8"
+        response.writer.write(objectMapper.writeValueAsString(mock))
+        return false
+    }
+}</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">📝 Como usar</div>
+          <p class="tut-text">Cadastre o mock no MongoDB com qualquer <code>_id</code> e envie o header na requisição:</p>
+          <pre class="tut-code">// Exemplo via curl
+curl -X POST http://localhost:8080/my-service/checkout \
+  -H "X-MOCK-ID: checkout-mock" \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "order-001"}'
+
+// Exemplo via RestTemplate / WebClient no teste
+webClient.post()
+    .uri("/checkout")
+    .header("X-MOCK-ID", "checkout-mock")
+    .bodyValue(request)
+    .retrieve()
+    .bodyToMono(CheckoutResponseDto::class.java)</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">🌱 Documento no MongoDB</div>
+          <pre class="tut-code">{
+  "_id": "checkout-mock",
+  "description": "Mock resposta de checkout",
+  "enabled": true,
+  "payload": {
+    "data": {
+      "checkout": {
+        "orderId": "order-001",
+        "approved": true,
+        "createdAt": "2024-01-15",
+        "expiresAt": "2024-03-01",
+        "status": "PENDING"
+      }
+    }
+  },
+  "externalMockProperties": null
+}</pre>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">🔍 Como o MockRepository consulta o MongoDB</div>
+          <p class="tut-text">O <code>GetInternalMockByIdImpl</code> usa o <code>MockRepository</code> buscando pelo <code>_id</code> do documento com <code>enabled: true</code>:</p>
+          <pre class="tut-code">// Implementação real
+@Component
+class GetInternalMockByIdImpl(
+    private val mockRepository: MockRepository&lt;*&gt;
+) : GetInternalMockById {
+    override fun execute(id: String): Any? {
+        return mockRepository.findMockByIdAndEnabledTrue(id)?.payload
+    }
+}
+
+// Query executada internamente
+// db.mocks.findOne({ _id: "checkout-mock", enabled: true })
+// Retorna apenas o campo "payload" do documento</pre>
+          <p class="tut-text" style="margin-top:8px">O valor do header <code>X-MOCK-ID</code> enviado pelo cliente deve ser <b>exatamente igual</b> ao <code>_id</code> do documento no MongoDB.</p>
+        </div>
+        <div class="tut-section">
+          <div class="tut-title">⚠️ Atenção</div>
+          <p class="tut-text">O interceptor retorna o payload inteiro do campo <code>payload</code> serializado como JSON. Para GraphQL, estruture o payload com <code>data.nomeQuery</code> conforme o contrato.</p>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalTutorial').classList.remove('open')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY TROCAR DB/COLLECTION -->
+<div id="changeColOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script>
+const CM_OPTS = { mode: { name: 'javascript', json: true }, theme: 'dracula', lineNumbers: true, matchBrackets: true, lineWrapping: true }
+const FRIENDLY_COLLECTIONS = ['mocks', 'kafka_messages_mock_inbound', 'kafka_messages_mock']
+
+let PROXY = 'http://localhost:3333'
+let state = { db: '', collection: '', docs: [], editId: null, lastUri: '' }
+let dbList = []
+let editors = {}
+
+// ── PROXY ──
+const api = async (action, body) => {
+  const r = await fetch(`${PROXY}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const data = await r.json()
+  if (!r.ok) throw new Error(data.error || r.statusText)
+  return data
+}
+
+let manualMode = false
+
+function toggleManual() {
+  manualMode = !manualMode
+  document.getElementById('fg-db-manual').style.display = manualMode ? 'block' : 'none'
+  document.getElementById('fg-col-manual').style.display = manualMode ? 'block' : 'none'
+  document.getElementById('database').style.display = manualMode ? 'none' : 'block'
+  document.getElementById('collectionInput').style.display = manualMode ? 'none' : 'block'
+  document.getElementById('btnManualToggle').textContent = manualMode ? '📋 Usar lista' : '✏️ Digitar manualmente'
+}
+
+// ── LOGIN STORAGE ──
+const LS_KEY = 'mock-manager-login'
+const LS_TTL = 7 * 24 * 60 * 60 * 1000
+
+function saveLoginData(uri, database, collection, port, manual) {
+  localStorage.setItem(LS_KEY, JSON.stringify({ uri, database, collection, port, manual, savedAt: Date.now() }))
+}
+
+function loadLoginData() {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (Date.now() - data.savedAt > LS_TTL) { localStorage.removeItem(LS_KEY); return null }
+    return data
+  } catch { return null }
+}
+
+function clearLoginData() { localStorage.removeItem(LS_KEY) }
+
+// ── LOGIN ──
+async function connect() {
+  const btn = document.getElementById('connectBtn')
+  const port = document.getElementById('proxyPort').value.trim() || '3333'
+  PROXY = `http://localhost:${port}`
+  const uri = document.getElementById('uri').value.trim()
+  const database = manualMode ? document.getElementById('databaseManual').value.trim() : document.getElementById('database').value
+  const collection = manualMode ? document.getElementById('collectionManual').value.trim() : document.getElementById('collectionInput').value
+  if (!uri || !database || !collection) { showAlert('Preencha todos os campos.', 'error'); return }
+  btn.disabled = true
+  btn.innerHTML = '<span class="spinner"></span> Conectando...'
+  try {
+    await api('connect', { uri, database })
+    if (document.getElementById('rememberLogin').checked) saveLoginData(uri, database, collection, port, manualMode)
+    else clearLoginData()
+    state.db = database; state.lastUri = uri; state.collection = collection
+    document.getElementById('login').style.display = 'none'
+    document.getElementById('app').style.display = 'block'
+    document.getElementById('topDb').textContent = database
+    document.getElementById('topCollection').textContent = collection
+    initEditors(); load()
+  } catch (e) {
+    showAlert('Falha na conexão. Verifique se o proxy está rodando e a URI está correta.', 'error')
+    btn.disabled = false; btn.innerHTML = 'Conectar'
+  }
+}
+
+function showAlert(msg, type) { document.getElementById('loginAlert').innerHTML = `<div class="alert alert-${type}">${msg}</div>` }
+
+function logout() {
+  state = { db: '', collection: '', docs: [], editId: null, lastUri: '' }
+  clearLoginData()
+  document.getElementById('app').style.display = 'none'
+  document.getElementById('login').style.display = 'flex'
+  document.getElementById('connectBtn').disabled = false
+  document.getElementById('connectBtn').innerHTML = 'Conectar'
+  document.getElementById('loginAlert').innerHTML = ''
+}
+
+// ── TROCAR DB / COLLECTION ──
+async function changeDatabase() {
+  const dbOptions = dbList.map(d => `<option value="${d.name}" ${d.name === state.db ? 'selected' : ''}>${d.name}</option>`).join('')
+  const firstCols = dbList.find(d => d.name === state.db)?.collections || []
+  const colOptions = firstCols.map(c => `<option value="${c}">${c}</option>`).join('')
+  document.getElementById('changeColOverlay').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:360px">
+      <h3 style="margin-bottom:16px;font-size:16px">Trocar database</h3>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:5px">Database</label>
+        <select id="changeDbSel" onchange="onChangeDatabaseSelect()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">${dbOptions}</select>
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:5px">Collection</label>
+        <select id="changeColSel" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">${colOptions}</select>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-ghost" onclick="document.getElementById('changeColOverlay').style.display='none'">Cancelar</button>
+        <button class="btn btn-primary" onclick="applyChangeDatabase()">Confirmar</button>
+      </div>
+    </div>`
+  document.getElementById('changeColOverlay').style.display = 'flex'
+}
+
+function onChangeDatabaseSelect() {
+  const db = dbList.find(d => d.name === document.getElementById('changeDbSel').value)
+  document.getElementById('changeColSel').innerHTML = (db?.collections || []).map(c => `<option value="${c}">${c}</option>`).join('')
+}
+
+async function applyChangeDatabase() {
+  const dbName = document.getElementById('changeDbSel').value
+  const col = document.getElementById('changeColSel').value
+  if (!dbName || !col) return
+  await api('connect', { uri: state.lastUri, database: dbName })
+  state.db = dbName; state.collection = col
+  document.getElementById('topDb').textContent = dbName
+  document.getElementById('topCollection').textContent = col
+  document.getElementById('changeColOverlay').style.display = 'none'
+  load()
+}
+
+async function changeCollection() {
+  const db = dbList.find(d => d.name === state.db)
+  const collections = db ? db.collections : [state.collection]
+  const options = collections.map(c => `<option value="${c}" ${c === state.collection ? 'selected' : ''}>${c}</option>`).join('')
+  document.getElementById('changeColOverlay').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:360px">
+      <h3 style="margin-bottom:16px;font-size:16px">Trocar collection</h3>
+      <select id="changeColSel" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">${options}</select>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-ghost" onclick="document.getElementById('changeColOverlay').style.display='none'">Cancelar</button>
+        <button class="btn btn-primary" onclick="applyChangeCollection()">Confirmar</button>
+      </div>
+    </div>`
+  document.getElementById('changeColOverlay').style.display = 'flex'
+}
+
+function applyChangeCollection() {
+  const col = document.getElementById('changeColSel').value
+  if (!col) return
+  state.collection = col
+  document.getElementById('topCollection').textContent = col
+  document.getElementById('changeColOverlay').style.display = 'none'
+  load()
+}
+
+// ── EDITORS ──
+function initEditors() {
+  if (editors.main) return
+  editors.main = CodeMirror.fromTextArea(document.getElementById('editor'), CM_OPTS)
+  editors.view = CodeMirror.fromTextArea(document.getElementById('viewEditor'), { ...CM_OPTS, readOnly: true })
+  editors.apiPayload = CodeMirror.fromTextArea(document.getElementById('apiMockPayload'), CM_OPTS)
+  editors.kafkaPayload = CodeMirror.fromTextArea(document.getElementById('kafkaPayload'), CM_OPTS)
+}
+const setVal = (e, v) => editors[e].setValue(typeof v === 'string' ? v : JSON.stringify(v, null, 2))
+const getVal = (e) => editors[e].getValue()
+
+// ── LOAD ──
+function isFriendly() { return FRIENDLY_COLLECTIONS.includes(state.collection) }
+
+async function load() {
+  showView(state.collection)
+  const spinner = '<tr><td colspan="6" class="empty"><span class="spinner"></span></td></tr>'
+  document.getElementById('tbody').innerHTML = spinner
+  document.getElementById('tbody-kafka-inbound').innerHTML = spinner
+  document.getElementById('tbody-kafka-outbound').innerHTML = spinner
+  document.getElementById('cards-mocks').innerHTML = '<div style="color:var(--muted);padding:24px"><span class="spinner"></span></div>'
+
+  try {
+    const limit = parseInt(document.getElementById('queryLimit').value) || 50
+    const { documents } = await api('find', { collection: state.collection, limit })
+    state.docs = documents
+    renderCurrent(documents)
+  } catch (e) {
+    document.getElementById('tbody').innerHTML = `<tr><td colspan="3" class="empty">Erro: ${e.message}</td></tr>`
+  }
+}
+
+function showView(col) {
+  document.getElementById('view-generic').style.display = col === 'mocks' || col === 'kafka_messages_mock_inbound' || col === 'kafka_messages_mock' ? 'none' : 'block'
+  document.getElementById('view-mocks').style.display = col === 'mocks' ? 'block' : 'none'
+  document.getElementById('view-kafka-inbound').style.display = col === 'kafka_messages_mock_inbound' ? 'block' : 'none'
+  document.getElementById('view-kafka-outbound').style.display = col === 'kafka_messages_mock' ? 'block' : 'none'
+  document.getElementById('btnNovo').style.display = col === 'kafka_messages_mock' ? 'none' : 'inline-flex'
+  document.getElementById('filter-type-wrap').style.display = col === 'mocks' ? 'flex' : 'none'
+}
+
+function renderCurrent(docs) {
+  if (state.collection === 'mocks') renderApiMocks(docs)
+  else if (state.collection === 'kafka_messages_mock_inbound') renderKafkaInbound(docs)
+  else if (state.collection === 'kafka_messages_mock') renderKafkaOutbound(docs)
+  else renderGeneric(docs)
+}
+
+let activeTypeFilter = 'all'
+
+function setTypeFilter(type) {
+  activeTypeFilter = type
+  ;['all', 'webclient', 'external', 'xmock'].forEach(t => {
+    document.getElementById(`ftype-${t}`).className = `btn btn-sm ${t === type ? 'btn-primary' : 'btn-ghost'}`
+  })
+  filterDocs()
+}
+
+function filterDocs() {
+  const q = document.getElementById('search').value.toLowerCase()
+  let filtered = state.docs.filter(d => JSON.stringify(d).toLowerCase().includes(q))
+  if (activeTypeFilter !== 'all' && state.collection === 'mocks') {
+    filtered = filtered.filter(d => detectMockType(d) === activeTypeFilter)
+  }
+  renderCurrent(filtered)
+}
+
+function handleNew() {
+  if (state.collection === 'mocks') openApiMockModal()
+  else if (state.collection === 'kafka_messages_mock_inbound') openKafkaInboundModal()
+  else openModal()
+}
+
+// ── VIEW GENÉRICA ──
+function renderGeneric(docs) {
+  const tbody = document.getElementById('tbody')
+  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">Nenhum documento encontrado</td></tr>'; return }
+  tbody.innerHTML = docs.map(d => {
+    const id = d._id?.$oid || d._id || ''
+    const preview = JSON.stringify(d).slice(0, 120)
+    return `<tr>
+      <td class="id-cell" title="${id}">${id}</td>
+      <td class="json-cell">${preview}${preview.length >= 120 ? '…' : ''}</td>
+      <td><div class="actions">
+        <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(d))})'>👁</button>
+        <button class="btn btn-ghost btn-sm" onclick='useAsTemplate(${JSON.stringify(JSON.stringify(d))})'>📋</button>
+        <button class="btn btn-ghost btn-sm" onclick='editDoc(${JSON.stringify(JSON.stringify(d))})'>✏️</button>
+        ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
+      </div></td>
+    </tr>`
+  }).join('')
+}
+
+// ── VIEW API MOCKS ──
+function renderApiMocks(docs) {
+  const container = document.getElementById('cards-mocks')
+  if (!docs.length) { container.innerHTML = '<div style="color:var(--muted);padding:24px;grid-column:1/-1;text-align:center">Nenhum mock encontrado</div>'; return }
+
+  const webclients = docs.filter(m => !m.externalMockProperties?.endpointId && /^(GET|POST|PUT|DELETE|PATCH):/.test(m._id?.$oid || m._id || ''))
+  const externals  = docs.filter(m => m.externalMockProperties?.endpointId)
+  const xmocks     = docs.filter(m => !m.externalMockProperties?.endpointId && !/^(GET|POST|PUT|DELETE|PATCH):/.test(m._id?.$oid || m._id || ''))
+
+  // detectar conflitos: webclient genérico que tem um por usuário para o mesmo endpoint
+  const externalEndpoints = new Set(externals.map(m => m.externalMockProperties.endpointId))
+  const conflicts = new Set(webclients.filter(m => externalEndpoints.has(m._id?.$oid || m._id || '')).map(m => m._id?.$oid || m._id || ''))
+
+  container.innerHTML = docs.map(m => {
+    const id = m._id?.$oid || m._id || ''
+    const type = detectMockType(m)
+    const endpointId = m.externalMockProperties?.endpointId || ''
+    const users = (m.externalMockProperties?.allowedUsers || []).join(', ')
+    const payloadPreview = JSON.stringify(m.payload || {}, null, 2).slice(0, 200)
+    const typeLabel = { webclient: '🌐 WebClient', external: '👤 Por Usuário', xmock: '🔖 X-MOCK-ID' }[type]
+    const typeBadgeColor = { webclient: '#1e2a4a', external: '#1a3a2a', xmock: '#2a1a3a' }[type]
+    const typeBorderColor = { webclient: 'var(--accent)', external: 'var(--success)', xmock: 'var(--warning)' }[type]
+
+    const conflictWarning = type === 'external'
+      ? `<div style="margin-bottom:10px;padding:8px 10px;background:#3f2a0a;border:1px solid var(--warning);border-radius:6px;font-size:12px;color:var(--warning)">
+          ⚡ <b>Prioridade 1</b> — Este mock por usuário é executado antes do WebClient Genérico para o mesmo endpoint.
+        </div>`
+      : type === 'webclient' && conflicts.has(id)
+      ? `<div style="margin-bottom:10px;padding:8px 10px;background:#3f1515;border:1px solid var(--danger);border-radius:6px;font-size:12px;color:#fca5a5">
+          ⚠️ <b>Prioridade 2</b> — Existe um mock <b>Por Usuário</b> para este endpoint. Este só será usado quando o usuário não estiver na lista de permitidos.
+        </div>`
+      : ''
+
+    return `<div class="mock-card" style="border-color:${m.enabled ? typeBorderColor : 'var(--border)'}">
+      <div class="mock-card-header">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="background:${typeBadgeColor};border:1px solid ${typeBorderColor};border-radius:4px;padding:2px 8px;font-size:11px;color:${typeBorderColor};font-weight:600">${typeLabel}</span>
+          </div>
+          <div class="mock-card-title">${id}</div>
+          ${m.description ? `<div class="mock-card-sub">${m.description}</div>` : ''}
+          ${endpointId ? `<div class="mock-card-sub" style="margin-top:2px">🔗 ${endpointId}</div>` : ''}
+          ${users ? `<div class="mock-card-sub">👤 ${users}</div>` : ''}
+        </div>
+        <span class="badge ${m.enabled ? 'badge-on' : 'badge-off'}">${m.enabled ? 'Ativo' : 'Inativo'}</span>
+      </div>
+      ${conflictWarning}
+      <div class="mock-card-body">${payloadPreview}${payloadPreview.length >= 200 ? '…' : ''}</div>
+      <div class="mock-card-footer">
+        <button class="btn btn-ghost btn-sm" onclick='openApiMockModal(${JSON.stringify(JSON.stringify(m))})'>✏️ Editar</button>
+        <button class="btn btn-${m.enabled ? 'warning' : 'success'} btn-sm" onclick='toggleMock("${id}", ${m.enabled})'>${m.enabled ? '⏸ Desativar' : '▶ Ativar'}</button>
+        <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.payload || {}))})'>👁 Payload</button>
+        ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
+      </div>
+    </div>`
+  }).join('')
+}
+
+async function toggleMock(id, current) {
+  await api('updateOne', { collection: 'mocks', filter: { _id: id }, update: { $set: { enabled: !current } } })
+  load()
+}
+
+const MOCK_TYPES = {
+  webclient: {
+    idPlaceholder: 'GET:/v1/products/stock-status',
+    idLabel: 'ID (Método:Caminho — igual ao endpoint chamado pelo serviço)',
+    hint: '🌐 <b>WebClient Genérico</b> — Intercepta chamadas de saída do serviço para APIs externas.<br>O <b>ID deve ser exatamente</b> o método HTTP + caminho da URL chamada.<br>Exemplo: <code>GET:/v1/products/stock-status</code>'
+  },
+  external: {
+    idPlaceholder: '',
+    idLabel: '',
+    hint: '👤 <b>WebClient por Usuário</b> — Retorna resposta diferente por usuário.<br>O <b>EndpointId</b> deve ser <b>exatamente igual</b> ao cadastrado no backend (método + caminho).<br>Exemplo: <code>GET:/v1/orders/pricing</code> apenas para o usuário <code>order-001</code>.'
+  },
+  xmock: {
+    idPlaceholder: 'meu-mock-especial',
+    idLabel: 'ID (qualquer nome único)',
+    hint: '🔖 <b>X-MOCK-ID</b> — Intercepta requisições <b>recebidas</b> pelo próprio serviço.<br>O cliente envia o header <code>X-MOCK-ID: &lt;id&gt;</code> na requisição e recebe o payload cadastrado.<br>Útil para mockar endpoints do serviço sem subir toda a stack.'
+  }
+}
+
+let currentMockType = 'webclient'
+
+function openTutorial() {
+  setTutTab('webclient')
+  document.getElementById('modalTutorial').classList.add('open')
+}
+
+function setTutTab(tab) {
+  ;['webclient', 'external', 'xmock'].forEach(t => {
+    document.getElementById(`tut-tab-${t}`).classList.toggle('active', t === tab)
+    document.getElementById(`tut-${t}`).classList.toggle('active', t === tab)
+  })
+}
+
+let catalogEndpoints = []
+let catalogLoaded = false
+let allowDelete = true
+
+;(async () => {
+  try {
+    const { allowDelete: ad } = await fetch(`${PROXY}/config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json())
+    allowDelete = ad
+  } catch { allowDelete = true }
+})()
+
+async function loadCatalog() {
+  if (catalogLoaded) return
+  try {
+    const { endpoints } = await api('catalog', {})
+    catalogEndpoints = endpoints || []
+    catalogLoaded = true
+  } catch {
+    catalogEndpoints = []
+  }
+}
+
+function populateCatalogSelect(type) {
+  const filtered = catalogEndpoints.filter(e => e.type === type)
+  const sel = document.getElementById('catalogSelect')
+  const fg = document.getElementById('fg-catalog')
+  if (!filtered.length) { fg.style.display = 'none'; return }
+  fg.style.display = 'block'
+  sel.innerHTML = '<option value="">Selecione um endpoint...</option>' +
+    filtered.map((e, i) => `<option value="${i}">${e.endpointId} — ${e.description}</option>`).join('')
+  sel.dataset.type = type
+}
+
+function onCatalogSelect() {
+  const sel = document.getElementById('catalogSelect')
+  if (!sel.value) return
+  const type = sel.dataset.type
+  const filtered = catalogEndpoints.filter(e => e.type === type)
+  const entry = filtered[parseInt(sel.value)]
+  if (!entry) return
+
+  if (type === 'webclient') {
+    document.getElementById('apiMockId').value = entry.endpointId
+  } else if (type === 'external') {
+    document.getElementById('apiMockEndpointId').value = entry.endpointId
+  }
+  document.getElementById('apiMockDesc').value = entry.description
+  if (entry.examplePayload) {
+    setVal('apiPayload', entry.examplePayload)
+    editors.apiPayload.refresh()
+  }
+}
+
+function setMockType(type) {
+  currentMockType = type
+  const cfg = MOCK_TYPES[type]
+  document.getElementById('apiMockIdLabel').textContent = cfg.idLabel
+  document.getElementById('apiMockId').placeholder = cfg.idPlaceholder
+  document.getElementById('mock-type-hint').innerHTML = cfg.hint
+  document.getElementById('fg-apiMockId').style.display = type === 'external' ? 'none' : 'block'
+  document.getElementById('fg-endpointId').style.display = type === 'external' ? 'block' : 'none'
+  document.getElementById('fg-users').style.display = type === 'external' ? 'block' : 'none'
+  document.getElementById('fg-graphql').style.display = type === 'xmock' ? 'block' : 'none'
+  if (type === 'webclient' || type === 'external') populateCatalogSelect(type)
+  else document.getElementById('fg-catalog').style.display = 'none'
+  ;['webclient', 'external', 'xmock'].forEach(t => {
+    document.getElementById(`tab-${t}`).className = `btn btn-sm ${t === type ? 'btn-primary' : 'btn-ghost'}`
+  })
+}
+
+function parseGraphQL() {
+  const contract = document.getElementById('graphqlContract').value.trim()
+  if (!contract) { alert('Cole o contrato GraphQL primeiro'); return }
+
+  // extrai nome da operação raiz (primeiro campo dentro da query/mutation)
+  const rootMatch = contract.match(/(?:query|mutation)\s+\w+[^{]*{\s*(\w+)/i)
+  const rootField = rootMatch?.[1] || 'data'
+
+  // extrai bloco de campos do nível mais interno com chaves
+  const innerBlock = contract.match(/{([^{}]+)}(?!.*{)/s)
+  if (!innerBlock) { alert('Não foi possível identificar os campos. Verifique o contrato.'); return }
+
+  const fields = innerBlock[1]
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#') && !l.startsWith('{') && !l.startsWith('}'))
+
+  const inferValue = (field) => {
+    const f = field.toLowerCase()
+    if (f.includes('id') || f.includes('key')) return ''
+    if (f.includes('allowed') || f.includes('active') || f.includes('enabled') || f.includes('flag')) return false
+    if (f.includes('date') || f.includes('deadline') || f.includes('createdat') || f.includes('updatedat')) return ''
+    if (f.includes('count') || f.includes('total') || f.includes('amount')) return 0
+    return ''
+  }
+
+  const obj = {}
+  fields.forEach(f => { obj[f] = inferValue(f) })
+
+  const payload = { data: { [rootField]: obj } }
+  setVal('apiPayload', payload)
+  editors.apiPayload.refresh()
+}
+
+function detectMockType(m) {
+  if (!m) return 'webclient'
+  if (m.externalMockProperties?.endpointId) return 'external'
+  const id = m._id?.$oid || m._id || ''
+  if (/^(GET|POST|PUT|DELETE|PATCH):/.test(id)) return 'webclient'
+  return 'xmock'
+}
+
+function openApiMockModal(jsonStr = null) {
+  const m = jsonStr ? JSON.parse(jsonStr) : null
+  document.getElementById('modalApiTitle').textContent = m ? 'Editar API Mock' : 'Novo API Mock'
+  document.getElementById('apiMockEditId').value = m ? (m._id?.$oid || m._id || '') : ''
+  document.getElementById('apiMockId').value = m ? (m._id?.$oid || m._id || '') : ''
+  document.getElementById('apiMockId').disabled = !!m
+  document.getElementById('apiMockDesc').value = m?.description || ''
+  document.getElementById('apiMockEndpointId').value = m?.externalMockProperties?.endpointId || ''
+  document.getElementById('apiMockUsers').value = (m?.externalMockProperties?.allowedUsers || []).join(', ')
+  document.getElementById('apiMockEnabled').checked = m ? m.enabled : true
+  document.getElementById('catalogSelect').value = ''
+  loadCatalog().then(() => setMockType(m ? detectMockType(m) : 'webclient'))
+  document.getElementById('modalApiMock').classList.add('open')
+  setTimeout(() => { editors.apiPayload.refresh(); setVal('apiPayload', m?.payload || {}) }, 30)
+}
+
+async function saveApiMock() {
+  const editId = document.getElementById('apiMockEditId').value
+  const id = document.getElementById('apiMockId').value.trim()
+  const desc = document.getElementById('apiMockDesc').value.trim()
+  const endpointId = document.getElementById('apiMockEndpointId').value.trim()
+  const users = document.getElementById('apiMockUsers').value.split(',').map(s => s.trim()).filter(Boolean)
+  const enabled = document.getElementById('apiMockEnabled').checked
+  let payload
+  try { payload = JSON.parse(getVal('apiPayload')) } catch { alert('Payload JSON inválido'); return }
+
+  const doc = { description: desc, enabled, payload, externalMockProperties: endpointId ? { endpointId, allowedUsers: users } : null }
+
+  try {
+    if (editId) {
+      await api('updateOne', { collection: 'mocks', filter: { _id: editId }, update: { $set: doc } })
+    } else {
+      const finalId = currentMockType === 'external' ? undefined : id
+      await api('insertOne', { collection: 'mocks', document: finalId ? { _id: finalId, ...doc } : doc })
+    }
+    document.getElementById('modalApiMock').classList.remove('open')
+    document.getElementById('apiMockId').disabled = false
+    load()
+  } catch (e) { alert('Erro: ' + e.message) }
+}
+
+// ── VIEW KAFKA INBOUND ──
+function renderKafkaInbound(docs) {
+  const tbody = document.getElementById('tbody-kafka-inbound')
+  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum evento encontrado</td></tr>'; return }
+  tbody.innerHTML = docs.map(m => {
+    const id = m._id?.$oid || m._id || ''
+    const payloadPreview = JSON.stringify(m.payload || {}).slice(0, 80)
+    return `<tr>
+      <td style="font-weight:600">${m.topic || '—'}</td>
+      <td style="color:var(--muted);font-size:12px">${m.key || '—'}</td>
+      <td class="json-cell">${payloadPreview}${payloadPreview.length >= 80 ? '…' : ''}</td>
+      <td><span class="badge ${m.processed ? 'badge-done' : 'badge-pending'}">${m.processed ? '✓ Processado' : '⏳ Pendente'}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${formatDate(m.createdAt)}</td>
+      <td><div class="actions">
+        <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.payload || {}))})'>👁</button>
+        <button class="btn btn-ghost btn-sm" onclick='openKafkaInboundModal(${JSON.stringify(JSON.stringify(m))})'>📋 Usar</button>
+        ${m.processed ? `<button class="btn btn-warning btn-sm" onclick='reprocess("${id}")'>↺ Reprocessar</button>` : ''}
+        ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
+      </div></td>
+    </tr>`
+  }).join('')
+}
+
+function openKafkaInboundModal(jsonStr = null) {
+  const m = jsonStr ? JSON.parse(jsonStr) : null
+  document.getElementById('modalKafkaTitle').textContent = m ? 'Usar como modelo' : 'Novo Evento Kafka'
+  document.getElementById('kafkaTopic').value = m?.topic || ''
+  document.getElementById('kafkaKey').value = m?.key || ''
+  document.getElementById('modalKafkaInbound').classList.add('open')
+  setTimeout(() => { editors.kafkaPayload.refresh(); setVal('kafkaPayload', m?.payload || {}) }, 30)
+}
+
+async function saveKafkaInbound() {
+  const topic = document.getElementById('kafkaTopic').value.trim()
+  const key = document.getElementById('kafkaKey').value.trim() || null
+  if (!topic) { alert('Informe o tópico'); return }
+  let payload
+  try { payload = JSON.parse(getVal('kafkaPayload')) } catch { alert('Payload JSON inválido'); return }
+  try {
+    await api('insertOne', { collection: 'kafka_messages_mock_inbound', document: { topic, key, payload, processed: false, createdAt: new Date().toISOString() } })
+    document.getElementById('modalKafkaInbound').classList.remove('open')
+    load()
+  } catch (e) { alert('Erro: ' + e.message) }
+}
+
+async function reprocess(id) {
+  await api('updateOne', { collection: 'kafka_messages_mock_inbound', filter: { _id: id }, update: { $set: { processed: false } } })
+  load()
+}
+
+// ── VIEW KAFKA OUTBOUND ──
+function renderKafkaOutbound(docs) {
+  const tbody = document.getElementById('tbody-kafka-outbound')
+  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma mensagem enviada</td></tr>'; return }
+  tbody.innerHTML = docs.map(m => {
+    const valuePreview = JSON.stringify(m.value || {}).slice(0, 80)
+    return `<tr>
+      <td style="font-weight:600">${m.topic || '—'}</td>
+      <td style="color:var(--muted);font-size:12px">${m.key || '—'}</td>
+      <td class="json-cell">${valuePreview}${valuePreview.length >= 80 ? '…' : ''}</td>
+      <td style="font-size:12px;color:var(--muted)">${formatDate(m.timestamp)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.value || {}))})'>👁 Ver</button></td>
+    </tr>`
+  }).join('')
+}
+
+// ── MODAL GENÉRICO ──
+function openModal(json = '{}', id = null) {
+  state.editId = id
+  document.getElementById('modalTitle').textContent = id ? 'Editar documento' : 'Novo documento'
+  document.getElementById('idFieldGroup').style.display = id ? 'none' : 'block'
+  document.getElementById('docId').value = ''
+  document.getElementById('modalDoc').classList.add('open')
+  setTimeout(() => { editors.main.refresh(); setVal('main', typeof json === 'string' ? JSON.parse(json) : json) }, 30)
+}
+
+function useAsTemplate(jsonStr) { const d = JSON.parse(jsonStr); delete d._id; openModal(d, null) }
+function editDoc(jsonStr) { const d = JSON.parse(jsonStr); openModal(d, d._id?.$oid || d._id) }
+
+function viewDoc(jsonStr) {
+  document.getElementById('modalView').classList.add('open')
+  setTimeout(() => { editors.view.refresh(); setVal('view', JSON.parse(jsonStr)) }, 30)
+}
+
+function closeModal() { document.getElementById('modalDoc').classList.remove('open') }
+
+async function save() {
+  let doc
+  try { doc = JSON.parse(getVal('main')) } catch { alert('JSON inválido'); return }
+  try {
+    if (state.editId) {
+      const { _id, ...rest } = doc
+      await api('updateOne', { collection: state.collection, filter: { _id: state.editId }, update: { $set: rest } })
+    } else {
+      const customId = document.getElementById('docId').value.trim()
+      if (customId) doc._id = customId
+      await api('insertOne', { collection: state.collection, document: doc })
+    }
+    closeModal(); load()
+  } catch (e) { alert('Erro: ' + e.message) }
+}
+
+async function del(id) {
+  if (!confirm('Deletar este documento?')) return
+  await api('deleteOne', { collection: state.collection, filter: { _id: id } })
+  load()
+}
+
+// ── UTILS ──
+function formatDate(val) {
+  if (!val) return '—'
+  try { return new Date(val.$date || val).toLocaleString('pt-BR') } catch { return String(val) }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.getElementById('login').style.display !== 'none') connect() })
+
+// ── SETTINGS ──
+let currentCfgTab = 'proxy'
+
+function setCfgTab(tab) {
+  currentCfgTab = tab
+  ;['proxy', 'databases'].forEach(t => {
+    document.getElementById(`cfg-tab-${t}`).classList.toggle('active', t === tab)
+    document.getElementById(`cfg-${t}`).style.display = t === tab ? 'block' : 'none'
+  })
+}
+
+async function openSettings() {
+  try {
+    const cfg = await fetch(`${PROXY}/get-config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json())
+    document.getElementById('cfgPort').value = cfg.PORT || '3333'
+    document.getElementById('cfgCatalogUrl').value = cfg.ENDPOINTS_CATALOG_URL || ''
+    document.getElementById('cfgAllowDelete').checked = cfg.ALLOW_DELETE !== 'false'
+  } catch {
+    document.getElementById('cfgPort').value = '3333'
+    document.getElementById('cfgAllowDelete').checked = true
+  }
+  try {
+    const { databases } = await fetch(`${PROXY}/databases`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json())
+    document.getElementById('cfgDatabases').value = JSON.stringify(databases, null, 2)
+  } catch {
+    document.getElementById('cfgDatabases').value = '[]'
+  }
+  document.getElementById('cfgDbError').style.display = 'none'
+  setCfgTab('proxy')
+  document.getElementById('modalSettings').classList.add('open')
+}
+
+async function saveSettings() {
+  const btn = document.getElementById('cfgSaveBtn')
+  btn.disabled = true
+  try {
+    if (currentCfgTab === 'proxy') {
+      const port = document.getElementById('cfgPort').value.trim()
+      const catalogUrl = document.getElementById('cfgCatalogUrl').value.trim()
+      const allowDelete = document.getElementById('cfgAllowDelete').checked
+      if (!port) { alert('Porta é obrigatória'); return }
+      await fetch(`${PROXY}/save-config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ PORT: port, ENDPOINTS_CATALOG_URL: catalogUrl, ALLOW_DELETE: allowDelete }) })
+    } else {
+      const raw = document.getElementById('cfgDatabases').value
+      let databases
+      try { databases = JSON.parse(raw) } catch { document.getElementById('cfgDbError').textContent = 'JSON inválido. Verifique a sintaxe.'; document.getElementById('cfgDbError').style.display = 'block'; return }
+      if (!Array.isArray(databases)) { document.getElementById('cfgDbError').textContent = 'O conteúdo deve ser um array JSON.'; document.getElementById('cfgDbError').style.display = 'block'; return }
+      document.getElementById('cfgDbError').style.display = 'none'
+      await fetch(`${PROXY}/save-databases`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ databases }) })
+      dbList = databases
+      const dbSel = document.getElementById('database')
+      dbSel.innerHTML = databases.map(d => `<option value="${d.name}">${d.name}</option>`).join('')
+      onDbChange()
+    }
+    document.getElementById('modalSettings').classList.remove('open')
+  } catch (e) {
+    alert('Erro ao salvar: ' + e.message)
+  } finally {
+    btn.disabled = false
+  }
+}
+
+// ── INIT ──
+;(async () => {
+  try {
+    const { databases } = await fetch(`${PROXY}/databases`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json())
+    dbList = databases
+    const dbSel = document.getElementById('database')
+    dbSel.innerHTML = databases.map(d => `<option value="${d.name}">${d.name}</option>`).join('')
+    onDbChange()
+  } catch {
+    document.getElementById('database').innerHTML = '<option value="">Proxy não encontrado — rode start.bat</option>'
+    document.getElementById('collectionInput').innerHTML = '<option value=""></option>'
+  }
+
+  const saved = loadLoginData()
+  if (saved) {
+    document.getElementById('rememberLogin').checked = true
+    document.getElementById('uri').value = saved.uri || ''
+    document.getElementById('proxyPort').value = saved.port || '3333'
+    if (saved.manual) {
+      toggleManual()
+      document.getElementById('databaseManual').value = saved.database || ''
+      document.getElementById('collectionManual').value = saved.collection || ''
+    } else {
+      const dbSel = document.getElementById('database')
+      if ([...dbSel.options].some(o => o.value === saved.database)) dbSel.value = saved.database
+      onDbChange()
+      const colSel = document.getElementById('collectionInput')
+      if ([...colSel.options].some(o => o.value === saved.collection)) colSel.value = saved.collection
+    }
+  }
+})()
+
+function onDbChange() {
+  const db = dbList.find(d => d.name === document.getElementById('database').value)
+  document.getElementById('collectionInput').innerHTML = db
+    ? db.collections.map(c => `<option value="${c}">${c}</option>`).join('')
+    : '<option value="">Selecione um database</option>'
+}
+</script>
+</body>
+</html>
