@@ -8,134 +8,182 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"/>
   <style>
     :root {
-      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
-      --border: #2e3250; --accent: #6c63ff; --accent-h: #574fd6;
-      --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
-      --text: #e2e8f0; --muted: #8892a4;
+      --bg: #0d0f18; --surface: #161822; --surface2: #1e2133; --surface3: #252840;
+      --border: #2a2d45; --border-light: #353860;
+      --accent: #7c6fea; --accent-h: #6557d4; --accent-glow: rgba(124,111,234,.15);
+      --success: #34d399; --danger: #f87171; --warning: #fbbf24;
+      --text: #e4e8f0; --muted: #7880a0; --muted2: #555d7a;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-    /* LOGIN */
-    #login { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 36px; width: 100%; max-width: 440px; }
-    .login-box h1 { font-size: 22px; margin-bottom: 4px; }
+    /* ── LOGIN ── */
+    #login { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: radial-gradient(ellipse at 50% 0%, rgba(124,111,234,.08) 0%, transparent 70%); }
+    .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; box-shadow: 0 24px 48px rgba(0,0,0,.4); }
+    .login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .login-logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .login-box h1 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
     .login-box h1 span { color: var(--accent); }
-    .login-box p { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    .login-box p { color: var(--muted); font-size: 13px; margin-bottom: 28px; margin-top: 4px; }
+    .login-divider { height: 1px; background: var(--border); margin: 18px 0; }
 
-    /* FORM */
-    .fg { margin-bottom: 14px; }
-    .fg label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
-    .fg input, .fg select, .fg textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; font-family: inherit; }
-    .fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--accent); }
+    /* ── FORM ── */
+    .fg { margin-bottom: 16px; }
+    .fg label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .fg input, .fg select, .fg textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 13px;
+      outline: none; transition: border-color .2s, box-shadow .2s; font-family: inherit;
+    }
+    .fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
     .fg textarea { resize: vertical; min-height: 80px; }
+    .fg input::placeholder { color: var(--muted2); }
 
-    /* BUTTONS */
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s, background .15s; }
+    /* ── BUTTONS ── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; white-space: nowrap; }
     .btn:disabled { opacity: .4; cursor: not-allowed; }
     .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: var(--accent-h); }
-    .btn-success { background: var(--success); color: #fff; }
-    .btn-danger  { background: var(--danger);  color: #fff; }
-    .btn-warning { background: var(--warning); color: #000; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-h); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .btn-success { background: var(--success); color: #0d1117; }
+    .btn-danger  { background: var(--danger); color: #fff; }
+    .btn-warning { background: var(--warning); color: #0d1117; }
     .btn-ghost   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); background: var(--surface3); }
     .btn-full    { width: 100%; justify-content: center; }
-    .btn-sm      { padding: 5px 10px; font-size: 12px; }
+    .btn-sm      { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
+    .btn-duplicate { background: rgba(99,179,237,.12); color: #63b3ed; border: 1px solid rgba(99,179,237,.3); }
+    .btn-duplicate:hover { background: rgba(99,179,237,.2); }
 
-    .alert { padding: 10px 13px; border-radius: 8px; font-size: 13px; margin-top: 10px; }
-    .alert-error   { background: #3f1515; border: 1px solid var(--danger);  color: #fca5a5; }
-    .alert-success { background: #14372a; border: 1px solid var(--success); color: #86efac; }
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; }
+    .alert-error   { background: rgba(248,113,113,.1); border: 1px solid var(--danger); color: #fca5a5; }
+    .alert-success { background: rgba(52,211,153,.1); border: 1px solid var(--success); color: #6ee7b7; }
 
-    /* APP */
+    /* ── APP SHELL ── */
     #app { display: none; }
-    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .topbar h2 { font-size: 15px; font-weight: 700; flex: 1; }
-    .topbar h2 span { color: var(--accent); }
-    .topbar-info { font-size: 12px; color: var(--muted); }
-    .topbar-collection { font-size: 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--text); }
 
-    .toolbar { display: flex; gap: 10px; align-items: center; padding: 16px 24px 0; flex-wrap: wrap; }
-    .search { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none; flex: 1; max-width: 320px; }
-    .search:focus { border-color: var(--accent); }
+    .topbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 24px; display: flex; align-items: center; gap: 8px;
+      height: 52px; position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-brand { font-size: 14px; font-weight: 700; margin-right: 4px; }
+    .topbar-brand span { color: var(--accent); }
+    .topbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    .topbar-collection {
+      font-size: 12px; font-weight: 600; background: var(--accent-glow);
+      border: 1px solid rgba(124,111,234,.3); border-radius: 20px;
+      padding: 3px 12px; color: var(--accent);
+    }
+    .topbar-db { font-size: 12px; color: var(--muted); }
+    .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 
-    /* TABLE */
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex; gap: 8px; align-items: center;
+      padding: 14px 24px; background: var(--surface);
+      border-bottom: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .search-wrap { position: relative; flex: 1; max-width: 300px; }
+    .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+    .search { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 32px; color: var(--text); font-size: 13px; outline: none; transition: border-color .2s, box-shadow .2s; }
+    .search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .toolbar-sep { width: 1px; height: 20px; background: var(--border); }
+    .limit-wrap { display: flex; align-items: center; gap: 6px; }
+    .limit-input { width: 72px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; color: var(--text); font-size: 12px; outline: none; text-align: center; }
+    .limit-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .filter-status { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; color: var(--text); font-size: 12px; outline: none; }
+    .results-count { font-size: 11px; color: var(--muted); font-weight: 600; padding: 4px 10px; background: var(--surface2); border-radius: 20px; border: 1px solid var(--border); white-space: nowrap; }
+    .filter-tabs { display: flex; gap: 4px; align-items: center; }
+
+    /* ── TABLE ── */
     .table-wrap { margin: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
     table { width: 100%; border-collapse: collapse; }
     thead tr { background: var(--surface2); }
-    th { padding: 11px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
+    th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 700; }
     td { padding: 11px 14px; font-size: 13px; border-top: 1px solid var(--border); vertical-align: middle; }
     tr:hover td { background: var(--surface2); }
-    .id-cell { font-family: monospace; font-size: 12px; color: var(--muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .json-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; color: var(--muted); }
-    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    .empty { text-align: center; padding: 48px; color: var(--muted); }
+    .id-cell { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; color: var(--muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .json-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; color: var(--muted2); }
+    .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+    .empty { text-align: center; padding: 56px; color: var(--muted); font-size: 13px; }
 
-    /* BADGES */
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-    .badge-on      { background: #14372a; color: var(--success); }
-    .badge-off     { background: #3f1515; color: var(--danger); }
-    .badge-pending { background: #3f2a0a; color: var(--warning); }
-    .badge-done    { background: #14372a; color: var(--success); }
+    /* ── BADGES ── */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-on      { background: rgba(52,211,153,.12); color: var(--success); border: 1px solid rgba(52,211,153,.25); }
+    .badge-off     { background: rgba(248,113,113,.12); color: var(--danger);  border: 1px solid rgba(248,113,113,.25); }
+    .badge-pending { background: rgba(251,191,36,.12);  color: var(--warning); border: 1px solid rgba(251,191,36,.25); }
+    .badge-done    { background: rgba(52,211,153,.12);  color: var(--success); border: 1px solid rgba(52,211,153,.25); }
 
-    /* MODAL */
-    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+    /* ── MODAL ── */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
     .overlay.open { display: flex; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 640px; max-width: 96vw; max-height: 92vh; overflow-y: auto; }
-    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
-    .modal-head h3 { font-size: 16px; }
-    .modal-head button { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
-    .modal-head button:hover { color: var(--text); }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 640px; max-width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 32px 64px rgba(0,0,0,.5); animation: modalIn .2s ease; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(.97) translateY(8px); } to { opacity: 1; transform: none; } }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 16px; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { font-size: 15px; font-weight: 700; }
+    .modal-head button { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 14px; cursor: pointer; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .modal-head button:hover { color: var(--text); border-color: var(--accent); }
     .modal-body { padding: 22px; }
-    .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
-    .CodeMirror { border-radius: 8px; font-size: 13px; height: 280px; }
+    .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; background: var(--surface2); border-radius: 0 0 16px 16px; }
+    .CodeMirror { border-radius: 8px; font-size: 13px; height: 280px; border: 1px solid var(--border); }
 
-    /* FRIENDLY CARDS */
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; padding: 16px 24px; }
-    .mock-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
-    .mock-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
-    .mock-card-title { font-weight: 600; font-size: 14px; word-break: break-all; }
-    .mock-card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .mock-card-body { font-size: 12px; color: var(--muted); font-family: monospace; background: var(--bg); border-radius: 6px; padding: 8px 10px; max-height: 80px; overflow: hidden; text-overflow: ellipsis; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all; }
-    .mock-card-footer { display: flex; gap: 6px; flex-wrap: wrap; }
+    /* ── MOCK CARDS ── */
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; padding: 20px 24px; }
+    .mock-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .mock-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+    .mock-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .mock-card-meta { flex: 1; min-width: 0; }
+    .mock-card-type-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .mock-type-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+    .mock-card-title { font-weight: 600; font-size: 13px; word-break: break-all; font-family: 'Cascadia Code', 'Fira Code', monospace; color: var(--text); line-height: 1.4; }
+    .mock-card-desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .mock-card-sub { font-size: 11px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+    .mock-card-body { font-size: 11px; color: var(--muted2); font-family: 'Cascadia Code', 'Fira Code', monospace; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; max-height: 72px; overflow: hidden; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+    .mock-card-footer { display: flex; gap: 5px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border); }
 
+    /* ── SPINNER ── */
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── TOGGLE ── */
     .toggle-wrap { display: flex; align-items: center; gap: 10px; }
-    .toggle { position: relative; width: 42px; height: 24px; }
+    .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider { position: absolute; inset: 0; background: var(--surface2); border-radius: 24px; cursor: pointer; transition: background .2s; border: 1px solid var(--border); }
-    .toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: transform .2s, background .2s; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--surface3); border-radius: 22px; cursor: pointer; transition: background .2s; border: 1px solid var(--border); }
+    .toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: transform .2s, background .2s; }
     .toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
     .toggle input:checked + .toggle-slider:before { transform: translateX(18px); background: #fff; }
 
-    /* TUTORIAL */
-    .tut-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 12px 16px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
+    /* ── TABS ── */
+    .tut-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 11px 16px; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
     .tut-tab:hover { color: var(--text); }
     .tut-tab.active { color: var(--text); border-bottom-color: var(--accent); }
     .tut-panel { display: none; }
     .tut-panel.active { display: block; }
     .tut-section { margin-bottom: 20px; }
-    .tut-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
-    .tut-text { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+    .tut-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text); text-transform: uppercase; letter-spacing: .4px; }
+    .tut-text { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 8px; }
     .tut-text code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; color: var(--success); font-size: 12px; }
-    .tut-code { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #a8d8a8; line-height: 1.6; overflow-x: auto; white-space: pre; }
+    .tut-code { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; color: #a8d8a8; line-height: 1.6; overflow-x: auto; white-space: pre; }
 
-    /* TOAST */
-    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
-    .toast { padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #fff; animation: toastIn .3s ease; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
-    .toast-success { background: var(--success); }
-    .toast-error { background: var(--danger); }
-    .toast-info { background: var(--accent); }
-    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    /* ── TOAST ── */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { padding: 11px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; color: #fff; animation: toastIn .25s ease; box-shadow: 0 8px 24px rgba(0,0,0,.4); display: flex; align-items: center; gap: 8px; }
+    .toast-success { background: #1a3a2a; border: 1px solid var(--success); color: #6ee7b7; }
+    .toast-error   { background: #3a1a1a; border: 1px solid var(--danger);  color: #fca5a5; }
+    .toast-info    { background: #1e1a3a; border: 1px solid var(--accent);  color: #c4b9ff; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 
-    /* RESULTS COUNTER */
-    .results-count { font-size: 12px; color: var(--muted); padding: 2px 10px; background: var(--surface2); border-radius: 12px; }
+    /* ── HINT BOX ── */
+    .hint-box { padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; color: var(--muted); line-height: 1.6; }
 
-    /* DUPLICATE BTN HIGHLIGHT */
-    .btn-duplicate { background: #1e3a5a; color: #7dd3fc; border: 1px solid #2563eb; }
-    .btn-duplicate:hover { background: #1e4070; }
+    /* ── CONFLICT WARNINGS ── */
+    .warn-priority-1 { padding: 8px 12px; background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3); border-radius: 8px; font-size: 12px; color: var(--warning); }
+    .warn-priority-2 { padding: 8px 12px; background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.3); border-radius: 8px; font-size: 12px; color: var(--danger); }
   </style>
 </head>
 <body>
@@ -143,47 +191,54 @@
 <!-- LOGIN -->
 <div id="login">
   <div class="login-box">
-    <h1>Mock <span>Manager</span></h1>
-    <p>Conecte ao MongoDB e gerencie qualquer collection</p>
+    <div class="login-logo">
+      <div class="login-logo-icon">⚡</div>
+      <div>
+        <h1>Mock <span>Manager</span></h1>
+      </div>
+    </div>
+    <p>Conecte ao MongoDB e gerencie suas collections</p>
+
     <div class="fg">
       <label>MongoDB URI</label>
       <input id="uri" type="password" placeholder="mongodb+srv://user:pass@host/db"/>
     </div>
     <div class="fg">
       <label>Database</label>
-      <select id="database" onchange="onDbChange()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">
+      <select id="database" onchange="onDbChange()">
         <option value="">Carregando...</option>
       </select>
     </div>
     <div class="fg" id="fg-db-manual" style="display:none">
-      <label>Database (manual)</label>
+      <label>Database</label>
       <input id="databaseManual" type="text" placeholder="meu-database"/>
     </div>
     <div class="fg">
       <label>Collection</label>
-      <select id="collectionInput" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;">
+      <select id="collectionInput">
         <option value="">Selecione um database</option>
       </select>
     </div>
     <div class="fg" id="fg-col-manual" style="display:none">
-      <label>Collection (manual)</label>
+      <label>Collection</label>
       <input id="collectionManual" type="text" placeholder="minha-collection"/>
     </div>
-    <div style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <button type="button" class="btn btn-ghost btn-sm" id="btnManualToggle" onclick="toggleManual()">✏️ Digitar manualmente</button>
     </div>
+    <div class="login-divider"></div>
     <div class="fg">
       <label>Porta do Proxy</label>
       <input id="proxyPort" type="text" placeholder="3333" value="3333"/>
     </div>
-    <div style="margin-bottom:14px;display:flex;align-items:center;gap:8px">
+    <div style="margin-bottom:18px;display:flex;align-items:center;gap:8px">
       <label class="toggle" style="margin:0"><input type="checkbox" id="rememberLogin"/><span class="toggle-slider"></span></label>
-      <span style="font-size:13px;color:var(--muted)">Lembrar dados por 7 dias</span>
+      <span style="font-size:12px;color:var(--muted)">Lembrar por 7 dias</span>
     </div>
-    <button class="btn btn-primary btn-full" id="connectBtn" onclick="connect()">Conectar</button>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button type="button" class="btn btn-ghost btn-full" onclick="openTutorial()">📚 Como implementar mocks</button>
-      <button type="button" class="btn btn-ghost" style="flex-shrink:0" onclick="openSettings()">⚙️</button>
+    <button class="btn btn-primary btn-full" id="connectBtn" onclick="connect()" style="padding:11px;font-size:13px;">Conectar</button>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button type="button" class="btn btn-ghost btn-full btn-sm" onclick="openTutorial()">📚 Como implementar</button>
+      <button type="button" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openSettings()">⚙️</button>
     </div>
     <div id="loginAlert"></div>
   </div>
@@ -192,34 +247,48 @@
 <!-- APP -->
 <div id="app">
   <div class="topbar">
-    <h2>Mock <span>Manager</span></h2>
+    <span class="topbar-brand">Mock <span>Manager</span></span>
+    <div class="topbar-sep"></div>
     <span class="topbar-collection" id="topCollection"></span>
-    <span class="topbar-info" id="topDb"></span>
-    <button class="btn btn-ghost btn-sm" onclick="openTutorial()">📚 Como implementar</button>
-    <button class="btn btn-ghost btn-sm" onclick="changeDatabase()">Trocar database</button>
-    <button class="btn btn-ghost btn-sm" onclick="changeCollection()">Trocar collection</button>
-    <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
+    <span class="topbar-db" id="topDb"></span>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openTutorial()">📚 Docs</button>
+      <button class="btn btn-ghost btn-sm" onclick="changeDatabase()">🗄️ Database</button>
+      <button class="btn btn-ghost btn-sm" onclick="changeCollection()">📂 Collection</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙️</button>
+      <div style="width:1px;height:20px;background:var(--border);margin:0 2px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
+    </div>
   </div>
 
   <!-- TOOLBAR -->
   <div class="toolbar">
-    <input class="search" id="search" placeholder="Buscar... (Ctrl+K)" oninput="filterDocs()"/>
-    <input type="number" id="queryLimit" value="50" min="1" max="5000" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;" title="Limite de documentos"/>
-    <span style="font-size:12px;color:var(--muted)">docs</span>
-    <div id="filter-type-wrap" style="display:none;gap:6px;align-items:center">
-      <button class="btn btn-primary btn-sm" id="ftype-all"   onclick="setTypeFilter('all')">Todos</button>
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search" id="search" placeholder="Buscar... (Ctrl+K)" oninput="filterDocs()"/>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="limit-wrap">
+      <input type="number" id="queryLimit" class="limit-input" value="50" min="1" max="5000" title="Limite de documentos"/>
+      <span class="limit-label">docs</span>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div id="filter-type-wrap" class="filter-tabs" style="display:none">
+      <button class="btn btn-primary btn-sm" id="ftype-all"      onclick="setTypeFilter('all')">Todos</button>
       <button class="btn btn-ghost  btn-sm" id="ftype-webclient" onclick="setTypeFilter('webclient')">🌐 WebClient</button>
       <button class="btn btn-ghost  btn-sm" id="ftype-external"  onclick="setTypeFilter('external')">👤 Por Usuário</button>
       <button class="btn btn-ghost  btn-sm" id="ftype-xmock"     onclick="setTypeFilter('xmock')">🔖 X-MOCK-ID</button>
     </div>
-    <select id="filterStatus" onchange="filterDocs()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
-      <option value="all">Todos</option>
+    <select id="filterStatus" class="filter-status" onchange="filterDocs()">
+      <option value="all">Todos os status</option>
       <option value="enabled">✅ Ativos</option>
       <option value="disabled">⏸ Inativos</option>
     </select>
     <span class="results-count" id="resultsCount">0 resultados</span>
-    <button class="btn btn-ghost btn-sm" onclick="load()">↻ Atualizar</button>
-    <button class="btn btn-primary btn-sm" id="btnNovo" onclick="handleNew()">+ Novo</button>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-ghost btn-sm" onclick="load()">↻ Atualizar</button>
+      <button class="btn btn-primary btn-sm" id="btnNovo" onclick="handleNew()">+ Novo mock</button>
+    </div>
   </div>
 
   <!-- VIEW GENÉRICA -->
@@ -311,7 +380,7 @@
           <button type="button" class="btn btn-ghost btn-sm" id="tab-external" onclick="setMockType('external')">👤 WebClient por usuário</button>
           <button type="button" class="btn btn-ghost btn-sm" id="tab-xmock" onclick="setMockType('xmock')">🔖 X-MOCK-ID</button>
         </div>
-        <div id="mock-type-hint" style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6"></div>
+        <div id="mock-type-hint" class="hint-box" style="margin-top:10px"></div>
       </div>
 
       <div class="fg" id="fg-apiMockId">
@@ -446,100 +515,189 @@
 
 <!-- MODAL TUTORIAL -->
 <div class="overlay" id="modalTutorial">
-  <div class="modal" style="width:780px;max-width:96vw">
+  <div class="modal" style="width:860px;max-width:96vw">
     <div class="modal-head">
-      <h3>📚 Como implementar Mocks em Kotlin</h3>
+      <h3>📚 Guia de Mocks</h3>
       <button onclick="document.getElementById('modalTutorial').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body" style="padding:0">
 
       <!-- ABAS -->
-      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 22px">
-        <button class="tut-tab active" id="tut-tab-webclient" onclick="setTutTab('webclient')">🌐 WebClient Genérico</button>
-        <button class="tut-tab" id="tut-tab-external" onclick="setTutTab('external')">👤 Por Usuário</button>
-        <button class="tut-tab" id="tut-tab-xmock" onclick="setTutTab('xmock')">🔖 X-MOCK-ID</button>
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 22px;overflow-x:auto">
+        <button class="tut-tab active" id="tut-tab-overview"   onclick="setTutTab('overview')">🗺️ Visão Geral</button>
+        <button class="tut-tab"        id="tut-tab-webclient"  onclick="setTutTab('webclient')">🌐 WebClient</button>
+        <button class="tut-tab"        id="tut-tab-external"   onclick="setTutTab('external')">👤 Por Usuário</button>
+        <button class="tut-tab"        id="tut-tab-xmock"      onclick="setTutTab('xmock')">🔖 X-MOCK-ID</button>
+        <button class="tut-tab"        id="tut-tab-kafka"      onclick="setTutTab('kafka')">📨 Kafka</button>
       </div>
 
-      <!-- WEBCLIENT GENERICO -->
-      <div class="tut-panel active" id="tut-webclient" style="padding:22px;overflow-y:auto;max-height:60vh">
+      <!-- ══ ABA: VISÃO GERAL ══ -->
+      <div class="tut-panel active" id="tut-overview" style="padding:24px;overflow-y:auto;max-height:62vh">
+
         <div class="tut-section">
-          <div class="tut-title">🎯 O que faz</div>
-          <p class="tut-text">Intercepta chamadas de saída do serviço para APIs externas via <code>WebClient</code>. Quando habilitado, o serviço <b>não faz a chamada HTTP real</b> — retorna direto o payload do MongoDB.</p>
+          <div class="tut-title">O que é o Mock Manager?</div>
+          <p class="tut-text">O Mock Manager é uma interface para criar e gerenciar mocks de APIs e eventos Kafka armazenados no MongoDB. Ele permite simular respostas de serviços externos e internos sem precisar subir dependências reais.</p>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Os 3 tipos de mock de API</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:4px">
+            <div style="background:var(--surface2);border:1px solid rgba(52,211,153,.3);border-radius:10px;padding:14px">
+              <div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:6px">👤 Por Usuário</div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Retorna payloads <b>diferentes por identificador</b> (orderId, userId, etc). O client consulta o MongoDB antes de fazer a chamada real.</p>
+            </div>
+            <div style="background:var(--surface2);border:1px solid rgba(124,111,234,.3);border-radius:10px;padding:14px">
+              <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px">🌐 WebClient Genérico</div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6"><b>Fallback</b> do Por Usuário. Mesmo endpoint, mesmo client mock — retornado quando nenhum mock por usuário corresponde ao identificador.</p>
+            </div>
+            <div style="background:var(--surface2);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:14px">
+              <div style="font-size:13px;font-weight:700;color:var(--warning);margin-bottom:6px">🔖 X-MOCK-ID</div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Intercepta requisições <b>recebidas</b> pelo próprio serviço. O cliente envia o header <code>X-MOCK-ID</code> e recebe o payload diretamente.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Hierarquia de prioridade (mesmo endpoint)</div>
+          <p class="tut-text">A hierarquia é resolvida <b>dentro do mesmo client mock</b> pelo <code>GetExternalMockByIdImpl</code> — não há dois caminhos separados:</p>
+          <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0">
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:12px 16px">
+              <div style="font-size:20px;font-weight:900;color:var(--success);min-width:28px;text-align:center">1</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--success)">👤 Por Usuário</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">Busca por <code>endpointId + userIdentifier</code> em <code>allowedUsers</code></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;color:var(--muted);font-size:11px">▼ <code>null</code> — não encontrou para esse identificador</div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(124,111,234,.08);border:1px solid rgba(124,111,234,.2);border-radius:8px;padding:12px 16px">
+              <div style="font-size:20px;font-weight:900;color:var(--accent);min-width:28px;text-align:center">2</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--accent)">🌐 WebClient Genérico (fallback)</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">Busca por <code>_id = endpointId</code> — mesmo documento, mesmo endpoint</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;color:var(--muted);font-size:11px">▼ <code>null</code> — não encontrou fallback</div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:12px 16px">
+              <div style="font-size:20px;font-weight:900;color:var(--danger);min-width:28px;text-align:center">✕</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--danger)">Retorna null → MockNotFoundException</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">Nenhum mock encontrado para esse endpoint + identificador</div>
+              </div>
+            </div>
+          </div>
+          <div class="hint-box" style="margin-top:4px">
+            ⚠️ Para o fallback funcionar, o <code>_id</code> do WebClient Genérico deve ser <b>idêntico</b> ao <code>endpointId</code> passado no client mock — ex: <code>GET:/v1/orders/pricing</code>.
+          </div>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Passo a passo: criar seu primeiro mock</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">1</span>
+              <div style="font-size:13px;color:var(--text)">Clique em <b>+ Novo mock</b> na toolbar</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">2</span>
+              <div style="font-size:13px;color:var(--text)">Escolha o <b>tipo</b>: WebClient Genérico, Por Usuário ou X-MOCK-ID</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">3</span>
+              <div style="font-size:13px;color:var(--text)">Preencha o <b>ID</b> (ou endpointId para Por Usuário) e o <b>payload JSON</b> de resposta</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">4</span>
+              <div style="font-size:13px;color:var(--text)">Certifique-se que o mock está <b>Ativo</b> e clique em Salvar</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">5</span>
+              <div style="font-size:13px;color:var(--text)">Configure o serviço conforme a aba do tipo escolhido e rode localmente</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Estrutura base de qualquer mock</div>
+          <pre class="tut-code">{
+  "_id":        "identificador-unico",      // chave de busca
+  "type":       "webclient|external|xmock", // tipo (salvo automaticamente)
+  "description":"Descrição legível",
+  "enabled":    true,                       // false = mock ignorado
+  "payload":    { ... },                    // resposta retornada
+  "externalMockProperties": null            // apenas para tipo "external"
+}</pre>
+        </div>
+      </div>
+
+      <!-- ══ ABA: WEBCLIENT GENÉRICO ══ -->
+      <div class="tut-panel" id="tut-webclient" style="padding:24px;overflow-y:auto;max-height:62vh">
+        <div class="tut-section">
+          <div class="tut-title">Papel atual: fallback do Por Usuário</div>
+          <p class="tut-text">O WebClient Genérico <b>não é um mecanismo separado</b> — ele opera dentro do mesmo client mock que usa <code>GetExternalMockById</code>. Quando a busca por usuário retorna <code>null</code>, o <code>GetExternalMockByIdImpl</code> tenta uma segunda busca usando o próprio <code>endpointId</code> como <code>_id</code>:</p>
+          <pre class="tut-code">// GetExternalMockByIdImpl — lógica interna
+val mock =
+    mockRepository.findExternalMockByEndpointIdAndAllowedUsersContainsAndEnabledTrue(
+        endpointId, userIdentifier          // 1ª tentativa: Por Usuário
+    ) ?: mockRepository.findMockByIdAndEnabledTrue(endpointId)  // 2ª: fallback genérico
+    ?: return null</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">⚙️ Pré-requisitos</div>
-          <p class="tut-text">Ative no <code>application-local.yml</code>:</p>
-          <pre class="tut-code">mocks:
-  webclient:
+          <div class="tut-title">Passo 1 — O client mock já existe (mesmo do Por Usuário)</div>
+          <p class="tut-text">Não há configuração separada. O fallback genérico é ativado automaticamente quando o client mock já está em uso com <code>GetExternalMockById</code>:</p>
+          <pre class="tut-code">// application-local.yml — mesmo que Para Por Usuário
+mocks:
+  pricing:
     enabled: true</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">📝 Como o ID do mock é gerado</div>
-          <p class="tut-text">O filtro intercepta automaticamente qualquer chamada feita via <code>WebClient</code> e usa <code>MÉTODO:/caminho</code> como chave de busca no MongoDB.</p>
-          <pre class="tut-code">// O filtro captura assim internamente:
-val endpointId = "${request.method().name}:${request.url().path}"
-// Exemplo: "GET:/v1/products/stock-status"</pre>
-        </div>
-        <div class="tut-section">
-          <div class="tut-title">🔧 Implementação do Client</div>
-          <p class="tut-text">Nenhuma mudança necessária no client existente. O <code>MockWebClientFilter</code> é injetado automaticamente no <code>AbstractWebClient</code>.</p>
-          <pre class="tut-code">@Service
-class ProductStockClientImpl(
-    @Value("\${client.catalog.url}")
-    private val url: String
-) : AbstractWebClient(url) {
-
-    override fun mapError(response: ClientResponse): Mono&lt;ClientResponse&gt; { ... }
-
-    fun getStockStatus(productId: String): ProductStockDto {
-        return getClient(WebClientConstants.CONTENT_TYPE_APPLICATION_JSON)
-            .get()
-            .uri("/v1/products/stock-status?productId=$productId")
-            .retrieve()
-            .bodyToMono(ProductStockDto::class.java)
-            .block()!!
-    }
-}</pre>
-        </div>
-        <div class="tut-section">
-          <div class="tut-title">🌱 Documento no MongoDB</div>
+          <div class="tut-title">Passo 2 — Criar o mock genérico no Manager</div>
+          <p class="tut-text">Selecione <b>+ Novo mock → 🌐 WebClient</b>. O <b>ID deve ser idêntico</b> ao <code>endpointId</code> usado no client mock (e nos mocks Por Usuário do mesmo endpoint):</p>
           <pre class="tut-code">{
-  "_id": "GET:/v1/products/stock-status",
-  "description": "Mock status de estoque do produto",
+  "_id": "GET:/v1/orders/pricing",   // idêntico ao endpointId do client
+  "type": "webclient",
+  "description": "Fallback genérico para precificação",
   "enabled": true,
   "payload": {
-    "productId": "prod-001",
-    "available": true,
-    "quantity": 42
+    "orderId": "qualquer",
+    "discount": 0,
+    "finalPrice": 100.00
   },
   "externalMockProperties": null
 }</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">⚠️ Atenção</div>
-          <p class="tut-text">O <code>_id</code> deve ser <b>exatamente igual</b> ao método HTTP + caminho da URI chamada pelo WebClient, sem query params.</p>
+          <div class="tut-title">Cenário completo: Por Usuário + Fallback</div>
+          <pre class="tut-code">// client mock chama:
+getExternalMockById.execute(
+    endpointId = "GET:/v1/orders/pricing",
+    userIdentifier = orderId    // ex: "order-999" (não cadastrado)
+)
+
+// GetExternalMockByIdImpl executa:
+// 1. busca { endpointId: "GET:/v1/orders/pricing", allowedUsers: { $in: ["order-999"] } }
+//    → null (order-999 não está em nenhum allowedUsers)
+// 2. busca { _id: "GET:/v1/orders/pricing", enabled: true }
+//    → retorna o mock genérico ✓</pre>
+        </div>
+        <div class="hint-box">
+          ⚠️ O <code>_id</code> do WebClient Genérico deve ser <b>exatamente igual</b> ao <code>endpointId</code> passado na chamada <code>execute(endpointId = "...")</code> — incluindo o método HTTP e o caminho completo, sem query params.
         </div>
       </div>
 
-      <!-- WEBCLIENT POR USUARIO -->
-      <div class="tut-panel" id="tut-external" style="padding:22px;overflow-y:auto;max-height:60vh">
+      <!-- ══ ABA: POR USUÁRIO ══ -->
+      <div class="tut-panel" id="tut-external" style="padding:24px;overflow-y:auto;max-height:62vh">
         <div class="tut-section">
-          <div class="tut-title">🎯 O que faz</div>
-          <p class="tut-text">Retorna payloads diferentes por usuário específico. O client injeta <code>GetExternalMockById</code> e consulta o MongoDB antes de fazer a chamada real.</p>
+          <div class="tut-title">Como funciona</div>
+          <p class="tut-text">O client mock injeta <code>GetExternalMockById</code> e, antes de fazer a chamada real, consulta o MongoDB filtrando por <code>endpointId</code> + identificador do recurso (<code>orderId</code>, <code>userId</code>, etc). Se encontrar, retorna o payload sem chamar a API externa.</p>
         </div>
         <div class="tut-section">
-          <div class="tut-title">⚙️ Pré-requisitos</div>
-          <p class="tut-text">Nenhuma configuração extra no yml. A busca usa a collection <code>mocks</code> com query por <code>externalMockProperties.endpointId</code> + <code>allowedUsers</code>.</p>
-        </div>
-        <div class="tut-section">
-          <div class="tut-title">📝 Implementação do Client</div>
-          <p class="tut-text">Crie uma implementação mock que injeta <code>GetExternalMockById</code> e use <code>@ConditionalOnProperty</code> para ativá-la em ambiente local:</p>
-          <pre class="tut-code">// Interface do client
+          <div class="tut-title">Passo 1 — Criar duas implementações do client</div>
+          <pre class="tut-code">// Interface
 interface OrderPricingClient {
     fun getPricing(orderId: String): OrderPricingDto
 }
 
-// Implementação real
+// Implementação REAL (usada fora do local)
 @Service
 @ConditionalOnProperty("mocks.pricing.enabled", havingValue = "false", matchIfMissing = true)
 class OrderPricingClientImpl(
@@ -556,7 +714,7 @@ class OrderPricingClientImpl(
     }
 }
 
-// Implementação mock
+// Implementação MOCK (usada localmente)
 @Service
 @ConditionalOnProperty("mocks.pricing.enabled", havingValue = "true")
 class OrderPricingClientMock(
@@ -573,46 +731,19 @@ class OrderPricingClientMock(
 }</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">⚙️ yml local</div>
-          <pre class="tut-code">mocks:
+          <div class="tut-title">Passo 2 — Ativar no yml local</div>
+          <pre class="tut-code">// application-local.yml
+mocks:
   pricing:
     enabled: true</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">🔍 Como o MockRepository consulta o MongoDB</div>
-          <p class="tut-text">O <code>GetExternalMockByIdImpl</code> usa o <code>MockRepository</code> que faz a seguinte query na collection <code>mocks</code>:</p>
-          <pre class="tut-code">// Query executada internamente
-{
-  "externalMockProperties.endpointId": "GET:/v1/orders/pricing",
-  "externalMockProperties.allowedUsers": { "$in": ["order-001"] },
-  "enabled": true
-}
-
-// Implementação real do repositório
-@Repository
-interface MockRepository&lt;T&gt; : MongoRepository&lt;Mock&lt;T&gt;, String&gt; {
-
-    @Query(
-        "{ " +
-        "  'externalMockProperties.endpointId': ?0, " +
-        "  'externalMockProperties.allowedUsers': { '\$in': [ ?1 ] }, " +
-        "  'enabled': true " +
-        "  } "
-    )
-    fun findExternalMockByEndpointIdAndAllowedUsersContainsAndEnabledTrue(
-        endpointId: String,
-        userIdentifier: String
-    ): Mock&lt;T&gt;?
-
-    fun findMockByIdAndEnabledTrue(id: String): Mock&lt;T&gt;?
-}</pre>
-          <p class="tut-text" style="margin-top:8px">O <code>userIdentifier</code> passado é o identificador do recurso (ex: <code>orderId</code>) — ele precisa estar na lista <code>allowedUsers</code> do documento MongoDB para o mock ser retornado.</p>
-        </div>
-        <div class="tut-section">
-          <div class="tut-title">🌱 Documento no MongoDB</div>
+          <div class="tut-title">Passo 3 — Criar o mock no Manager</div>
+          <p class="tut-text">Selecione <b>+ Novo mock → 👤 Por Usuário</b>. Preencha o <b>EndpointId</b> igual ao usado no client e os identificadores em <b>Usuários permitidos</b>:</p>
           <pre class="tut-code">{
-  "_id": "mock-pricing-order-001",
-  "description": "Mock precificação para pedido order-001",
+  "_id": "mock-pricing-order-001",   // qualquer nome único
+  "type": "external",
+  "description": "Mock precificação para order-001",
   "enabled": true,
   "payload": {
     "orderId": "order-001",
@@ -620,26 +751,34 @@ interface MockRepository&lt;T&gt; : MongoRepository&lt;Mock&lt;T&gt;, String&gt;
     "finalPrice": 89.50
   },
   "externalMockProperties": {
-    "endpointId": "GET:/v1/orders/pricing",
-    "allowedUsers": ["order-001", "order-002"]
+    "endpointId": "GET:/v1/orders/pricing",   // deve ser idêntico ao client
+    "allowedUsers": ["order-001", "order-002"] // identificadores atendidos
   }
 }</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">⚠️ Atenção</div>
-          <p class="tut-text">O <code>endpointId</code> em <code>externalMockProperties</code> deve ser <b>idêntico</b> ao valor passado na chamada <code>getExternalMockById.execute(endpointId = ...)</code> no client mock.</p>
+          <div class="tut-title">Query executada no MongoDB</div>
+          <pre class="tut-code">db.mocks.findOne({
+  "externalMockProperties.endpointId": "GET:/v1/orders/pricing",
+  "externalMockProperties.allowedUsers": { "$in": ["order-001"] },
+  "enabled": true
+})</pre>
+        </div>
+        <div class="hint-box">
+          💡 Crie um mock por grupo de usuários com payloads diferentes. Para cobrir todos os outros identificadores automaticamente, crie um <b>🌐 WebClient Genérico</b> com <code>_id</code> igual ao <code>endpointId</code> — ele será o fallback automático via <code>GetExternalMockByIdImpl</code>.
         </div>
       </div>
-      <div class="tut-panel" id="tut-xmock" style="padding:22px;overflow-y:auto;max-height:60vh">
+
+      <!-- ══ ABA: X-MOCK-ID ══ -->
+      <div class="tut-panel" id="tut-xmock" style="padding:24px;overflow-y:auto;max-height:62vh">
         <div class="tut-section">
-          <div class="tut-title">🎯 O que faz</div>
-          <p class="tut-text">Intercepta requisições <b>recebidas</b> pelo próprio serviço. O cliente envia o header <code>X-MOCK-ID</code> e recebe o payload cadastrado no MongoDB — sem executar nenhuma lógica de negócio.</p>
+          <div class="tut-title">Como funciona</div>
+          <p class="tut-text">O <code>MockInterceptor</code> está ativo em todos os perfis exceto <code>production</code>. Ele verifica o header <code>X-MOCK-ID</code> em toda requisição recebida. Se encontrar, busca o mock no MongoDB e retorna o payload <b>sem executar nenhuma lógica de negócio</b>.</p>
         </div>
         <div class="tut-section">
-          <div class="tut-title">⚙️ Configuração</div>
-          <p class="tut-text">O <code>MockInterceptor</code> já está ativo em todos os perfis exceto <code>production</code> via <code>@Profile("!production")</code>. Nenhuma configuração adicional necessária.</p>
-          <pre class="tut-code">// Já existe no projeto — nenhuma mudança necessária
-@Component
+          <div class="tut-title">Passo 1 — Nenhuma configuração necessária</div>
+          <p class="tut-text">O interceptor já existe no projeto:</p>
+          <pre class="tut-code">@Component
 @Profile("!production")
 class MockInterceptor(
     private val getInternalMockById: GetInternalMockById,
@@ -656,40 +795,23 @@ class MockInterceptor(
         response.status = 200
         response.contentType = "application/json;charset=UTF-8"
         response.writer.write(objectMapper.writeValueAsString(mock))
-        return false
+        return false   // interrompe a cadeia — controller não é chamado
     }
 }</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">📝 Como usar</div>
-          <p class="tut-text">Cadastre o mock no MongoDB com qualquer <code>_id</code> e envie o header na requisição:</p>
-          <pre class="tut-code">// Exemplo via curl
-curl -X POST http://localhost:8080/my-service/checkout \
-  -H "X-MOCK-ID: checkout-mock" \
-  -H "Content-Type: application/json" \
-  -d '{"orderId": "order-001"}'
-
-// Exemplo via RestTemplate / WebClient no teste
-webClient.post()
-    .uri("/checkout")
-    .header("X-MOCK-ID", "checkout-mock")
-    .bodyValue(request)
-    .retrieve()
-    .bodyToMono(CheckoutResponseDto::class.java)</pre>
-        </div>
-        <div class="tut-section">
-          <div class="tut-title">🌱 Documento no MongoDB</div>
+          <div class="tut-title">Passo 2 — Criar o mock no Manager</div>
+          <p class="tut-text">Selecione <b>+ Novo mock → 🔖 X-MOCK-ID</b>. O <b>ID</b> pode ser qualquer nome único:</p>
           <pre class="tut-code">{
   "_id": "checkout-mock",
-  "description": "Mock resposta de checkout",
+  "type": "xmock",
+  "description": "Mock resposta de checkout aprovado",
   "enabled": true,
   "payload": {
     "data": {
       "checkout": {
         "orderId": "order-001",
         "approved": true,
-        "createdAt": "2024-01-15",
-        "expiresAt": "2024-03-01",
         "status": "PENDING"
       }
     }
@@ -698,26 +820,102 @@ webClient.post()
 }</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">🔍 Como o MockRepository consulta o MongoDB</div>
-          <p class="tut-text">O <code>GetInternalMockByIdImpl</code> usa o <code>MockRepository</code> buscando pelo <code>_id</code> do documento com <code>enabled: true</code>:</p>
-          <pre class="tut-code">// Implementação real
-@Component
-class GetInternalMockByIdImpl(
-    private val mockRepository: MockRepository&lt;*&gt;
-) : GetInternalMockById {
-    override fun execute(id: String): Any? {
-        return mockRepository.findMockByIdAndEnabledTrue(id)?.payload
-    }
-}
+          <div class="tut-title">Passo 3 — Usar nas chamadas</div>
+          <pre class="tut-code">// Via curl
+curl -X POST http://localhost:8080/my-service/checkout   -H "X-MOCK-ID: checkout-mock"   -H "Content-Type: application/json"   -d '{"orderId": "order-001"}'
 
-// Query executada internamente
-// db.mocks.findOne({ _id: "checkout-mock", enabled: true })
-// Retorna apenas o campo "payload" do documento</pre>
-          <p class="tut-text" style="margin-top:8px">O valor do header <code>X-MOCK-ID</code> enviado pelo cliente deve ser <b>exatamente igual</b> ao <code>_id</code> do documento no MongoDB.</p>
+// Via WebClient/RestTemplate em testes
+webClient.post()
+    .uri("/checkout")
+    .header("X-MOCK-ID", "checkout-mock")
+    .bodyValue(request)
+    .retrieve()
+    .bodyToMono(CheckoutResponseDto::class.java)</pre>
         </div>
         <div class="tut-section">
-          <div class="tut-title">⚠️ Atenção</div>
-          <p class="tut-text">O interceptor retorna o payload inteiro do campo <code>payload</code> serializado como JSON. Para GraphQL, estruture o payload com <code>data.nomeQuery</code> conforme o contrato.</p>
+          <div class="tut-title">Query executada no MongoDB</div>
+          <pre class="tut-code">db.mocks.findOne({ _id: "checkout-mock", enabled: true })
+// Retorna apenas o campo "payload" do documento</pre>
+        </div>
+        <div class="hint-box">
+          💡 Para GraphQL, estruture o payload com <code>data.nomeQuery</code> conforme o contrato. Use o botão <b>⚡ Extrair payload</b> no formulário para gerar automaticamente a partir de uma resposta real.
+        </div>
+      </div>
+
+      <!-- ══ ABA: KAFKA ══ -->
+      <div class="tut-panel" id="tut-kafka" style="padding:24px;overflow-y:auto;max-height:62vh">
+
+        <div class="tut-section">
+          <div class="tut-title">As duas collections Kafka</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+            <div style="background:var(--surface2);border:1px solid rgba(124,111,234,.3);border-radius:10px;padding:14px">
+              <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px">📥 kafka_messages_mock_inbound</div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Eventos que o serviço vai <b>consumir</b> como se fossem mensagens Kafka recebidas. Você cria o evento aqui e o serviço o processa.</p>
+            </div>
+            <div style="background:var(--surface2);border:1px solid rgba(52,211,153,.3);border-radius:10px;padding:14px">
+              <div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:6px">📤 kafka_messages_mock</div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Mensagens que o serviço <b>publicou</b> no Kafka durante ambiente local. Somente leitura — serve para inspecionar o que foi enviado.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Passo a passo: disparar um evento de entrada</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">1</span>
+              <div style="font-size:13px;color:var(--text)">Selecione a collection <b>kafka_messages_mock_inbound</b> na tela de login</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">2</span>
+              <div style="font-size:13px;color:var(--text)">Clique em <b>+ Novo mock</b> e preencha tópico, key e payload do evento</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">3</span>
+              <div style="font-size:13px;color:var(--text)">Clique em <b>Enviar Evento</b> — o documento é inserido com <code>processed: false</code></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">4</span>
+              <div style="font-size:13px;color:var(--text)">O serviço faz polling nessa collection e processa eventos com <code>processed: false</code>, marcando-os como <code>true</code> após consumir</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--surface2);border-radius:8px">
+              <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">5</span>
+              <div style="font-size:13px;color:var(--text)">Para reprocessar um evento já consumido, clique em <b>↺ Reprocessar</b> — isso reseta o campo <code>processed</code> para <code>false</code></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Estrutura do documento inbound</div>
+          <pre class="tut-code">{
+  "topic":     "order-created",             // tópico Kafka simulado
+  "key":       "order-001",                 // chave da mensagem (opcional)
+  "payload":   { "orderId": "order-001", "total": 99.90 },
+  "processed": false,                       // false = aguardando consumo
+  "createdAt": "2024-01-15T10:00:00.000Z"
+}</pre>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Dica: datas no payload</div>
+          <p class="tut-text">O formulário converte automaticamente strings de data para o formato numérico que o serviço espera:</p>
+          <pre class="tut-code">// No formulário você escreve:
+"date": "2024-01-15"          →  dias desde epoch (ex: 19737)
+"timestamp": "2024-01-15T10:00:00Z"  →  milissegundos (ex: 1705312800000)</pre>
+        </div>
+
+        <div class="tut-section">
+          <div class="tut-title">Estrutura do documento outbound (somente leitura)</div>
+          <pre class="tut-code">{
+  "topic":     "order-confirmed",
+  "key":       "order-001",
+  "value":     { "orderId": "order-001", "status": "CONFIRMED" },
+  "timestamp": "2024-01-15T10:05:00.000Z"
+}</pre>
+        </div>
+
+        <div class="hint-box">
+          💡 Use <b>📋 Usar como modelo</b> em um evento existente para criar variações rapidamente sem preencher tudo do zero.
         </div>
       </div>
 
@@ -1054,27 +1252,23 @@ function renderApiMocks(docs) {
     const typeBorderColor = { webclient: 'var(--accent)', external: 'var(--success)', xmock: 'var(--warning)' }[type]
 
     const conflictWarning = type === 'external'
-      ? `<div style="margin-bottom:10px;padding:8px 10px;background:#3f2a0a;border:1px solid var(--warning);border-radius:6px;font-size:12px;color:var(--warning)">
-          ⚡ <b>Prioridade 1</b> — Este mock por usuário é executado antes do WebClient Genérico para o mesmo endpoint.
-        </div>`
+      ? `<div class="warn-priority-1">⚡ <b>Prioridade 1</b> — Executado antes do WebClient Genérico para o mesmo endpoint.</div>`
       : type === 'webclient' && conflicts.has(id)
-      ? `<div style="margin-bottom:10px;padding:8px 10px;background:#3f1515;border:1px solid var(--danger);border-radius:6px;font-size:12px;color:#fca5a5">
-          ⚠️ <b>Prioridade 2</b> — Existe um mock <b>Por Usuário</b> para este endpoint. Este só será usado quando o usuário não estiver na lista de permitidos.
-        </div>`
+      ? `<div class="warn-priority-2">⚠️ <b>Prioridade 2</b> — Existe um mock Por Usuário para este endpoint. Este é o fallback.</div>`
       : ''
 
     return `<div class="mock-card" style="border-color:${m.enabled ? typeBorderColor : 'var(--border)'}">
       <div class="mock-card-header">
-        <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-            <span style="background:${typeBadgeColor};border:1px solid ${typeBorderColor};border-radius:4px;padding:2px 8px;font-size:11px;color:${typeBorderColor};font-weight:600">${typeLabel}</span>
+        <div class="mock-card-meta">
+          <div class="mock-card-type-row">
+            <span class="mock-type-badge" style="background:${typeBadgeColor};color:${typeBorderColor};border:1px solid ${typeBorderColor}">${typeLabel}</span>
+            <span class="badge ${m.enabled ? 'badge-on' : 'badge-off'}" style="font-size:10px">${m.enabled ? '● Ativo' : '● Inativo'}</span>
           </div>
           <div class="mock-card-title">${id}</div>
-          ${m.description ? `<div class="mock-card-sub">${m.description}</div>` : ''}
-          ${endpointId ? `<div class="mock-card-sub" style="margin-top:2px">🔗 ${endpointId}</div>` : ''}
+          ${m.description ? `<div class="mock-card-desc">${m.description}</div>` : ''}
+          ${endpointId ? `<div class="mock-card-sub">🔗 ${endpointId}</div>` : ''}
           ${users ? `<div class="mock-card-sub">👤 ${users}</div>` : ''}
         </div>
-        <span class="badge ${m.enabled ? 'badge-on' : 'badge-off'}">${m.enabled ? 'Ativo' : 'Inativo'}</span>
       </div>
       ${conflictWarning}
       <div class="mock-card-body">${payloadPreview}${payloadPreview.length >= 200 ? '…' : ''}</div>
@@ -1116,12 +1310,12 @@ const MOCK_TYPES = {
 let currentMockType = 'webclient'
 
 function openTutorial() {
-  setTutTab('webclient')
+  setTutTab('overview')
   document.getElementById('modalTutorial').classList.add('open')
 }
 
 function setTutTab(tab) {
-  ;['webclient', 'external', 'xmock'].forEach(t => {
+  ;['overview', 'webclient', 'external', 'xmock', 'kafka'].forEach(t => {
     document.getElementById(`tut-tab-${t}`).classList.toggle('active', t === tab)
     document.getElementById(`tut-${t}`).classList.toggle('active', t === tab)
   })
