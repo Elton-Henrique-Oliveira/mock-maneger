@@ -888,7 +888,7 @@ async function load() {
     const limit = parseInt(document.getElementById('queryLimit').value) || 50
     const { documents } = await api('find', { collection: state.collection, limit })
     state.docs = documents
-    renderCurrent(documents)
+    filterDocs()
   } catch (e) {
     document.getElementById('tbody').innerHTML = `<tr><td colspan="3" class="empty">Erro: ${e.message}</td></tr>`
   }
