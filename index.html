@@ -1210,9 +1210,10 @@ function renderKafkaInbound(docs) {
   tbody.innerHTML = docs.map(m => {
     const id = m._id?.$oid || m._id || ''
     const payloadPreview = JSON.stringify(m.payload || {}).slice(0, 80)
+    const keyDisplay = m.key == null ? '—' : (typeof m.key === 'object' ? JSON.stringify(m.key) : m.key)
     return `<tr>
       <td style="font-weight:600">${m.topic || '—'}</td>
-      <td style="color:var(--muted);font-size:12px">${m.key || '—'}</td>
+      <td class="json-cell" title="${keyDisplay}">${keyDisplay}</td>
       <td class="json-cell">${payloadPreview}${payloadPreview.length >= 80 ? '…' : ''}</td>
       <td><span class="badge ${m.processed ? 'badge-done' : 'badge-pending'}">${m.processed ? '✓ Processado' : '⏳ Pendente'}</span></td>
       <td style="font-size:12px;color:var(--muted)">${formatDate(m.createdAt)}</td>
@@ -1278,12 +1279,13 @@ function renderKafkaOutbound(docs) {
   if (!docs.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma mensagem enviada</td></tr>'; return }
   tbody.innerHTML = docs.map(m => {
     const valuePreview = JSON.stringify(m.value || {}).slice(0, 80)
+    const keyDisplay = m.key == null ? '—' : (typeof m.key === 'object' ? JSON.stringify(m.key) : m.key)
     return `<tr>
       <td style="font-weight:600">${m.topic || '—'}</td>
-      <td style="color:var(--muted);font-size:12px">${m.key || '—'}</td>
+      <td class="json-cell" title="${keyDisplay}">${keyDisplay}</td>
       <td class="json-cell">${valuePreview}${valuePreview.length >= 80 ? '…' : ''}</td>
       <td style="font-size:12px;color:var(--muted)">${formatDate(m.timestamp)}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.value || {}))})'>👁 Ver</button></td>
+      <td><button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify({ key: m.key, value: m.value }))})'>👁 Ver</button></td>
     </tr>`
   }).join('')
 }
