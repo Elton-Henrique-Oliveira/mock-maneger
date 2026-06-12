@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
@@ -121,6 +121,21 @@
     .tut-text { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
     .tut-text code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; color: var(--success); font-size: 12px; }
     .tut-code { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #a8d8a8; line-height: 1.6; overflow-x: auto; white-space: pre; }
+
+    /* TOAST */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #fff; animation: toastIn .3s ease; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+    .toast-success { background: var(--success); }
+    .toast-error { background: var(--danger); }
+    .toast-info { background: var(--accent); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* RESULTS COUNTER */
+    .results-count { font-size: 12px; color: var(--muted); padding: 2px 10px; background: var(--surface2); border-radius: 12px; }
+
+    /* DUPLICATE BTN HIGHLIGHT */
+    .btn-duplicate { background: #1e3a5a; color: #7dd3fc; border: 1px solid #2563eb; }
+    .btn-duplicate:hover { background: #1e4070; }
   </style>
 </head>
 <body>
@@ -188,7 +203,7 @@
 
   <!-- TOOLBAR -->
   <div class="toolbar">
-    <input class="search" id="search" placeholder="Buscar em qualquer campo..." oninput="filterDocs()"/>
+    <input class="search" id="search" placeholder="Buscar... (Ctrl+K)" oninput="filterDocs()"/>
     <input type="number" id="queryLimit" value="50" min="1" max="5000" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;" title="Limite de documentos"/>
     <span style="font-size:12px;color:var(--muted)">docs</span>
     <div id="filter-type-wrap" style="display:none;gap:6px;align-items:center">
@@ -197,6 +212,12 @@
       <button class="btn btn-ghost  btn-sm" id="ftype-external"  onclick="setTypeFilter('external')">👤 Por Usuário</button>
       <button class="btn btn-ghost  btn-sm" id="ftype-xmock"     onclick="setTypeFilter('xmock')">🔖 X-MOCK-ID</button>
     </div>
+    <select id="filterStatus" onchange="filterDocs()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
+      <option value="all">Todos</option>
+      <option value="enabled">✅ Ativos</option>
+      <option value="disabled">⏸ Inativos</option>
+    </select>
+    <span class="results-count" id="resultsCount">0 resultados</span>
     <button class="btn btn-ghost btn-sm" onclick="load()">↻ Atualizar</button>
     <button class="btn btn-primary btn-sm" id="btnNovo" onclick="handleNew()">+ Novo</button>
   </div>
@@ -707,6 +728,9 @@ class GetInternalMockByIdImpl(
   </div>
 </div>
 
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
 <!-- OVERLAY TROCAR DB/COLLECTION -->
 <div id="changeColOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;"></div>
 
@@ -716,6 +740,43 @@ class GetInternalMockByIdImpl(
 <script>
 const CM_OPTS = { mode: { name: 'javascript', json: true }, theme: 'dracula', lineNumbers: true, matchBrackets: true, lineWrapping: true }
 const FRIENDLY_COLLECTIONS = ['mocks', 'kafka_messages_mock_inbound', 'kafka_messages_mock']
+
+// ── TOAST ──
+function toast(msg, type = 'success') {
+  const el = document.createElement('div')
+  el.className = `toast toast-${type}`
+  el.textContent = msg
+  document.getElementById('toastContainer').appendChild(el)
+  setTimeout(() => el.remove(), 3000)
+}
+
+// ── RESULTS COUNT ──
+function updateCount(n) { document.getElementById('resultsCount').textContent = `${n} resultado${n !== 1 ? 's' : ''}` }
+
+// ── DUPLICATE MOCK ──
+async function duplicateMock(jsonStr) {
+  const m = JSON.parse(jsonStr)
+  const origId = m._id?.$oid || m._id || ''
+  delete m._id
+  const type = detectMockType(m)
+  if (type === 'webclient') {
+    const newId = prompt('ID do mock duplicado:', origId + '-copy')
+    if (!newId) return
+    m._id = newId
+  }
+  try {
+    await api('insertOne', { collection: state.collection, document: m })
+    toast('Mock duplicado com sucesso!')
+    load()
+  } catch (e) { toast('Erro: ' + e.message, 'error') }
+}
+
+// ── DUPLICATE KAFKA ──
+function duplicateKafka(jsonStr) {
+  const m = JSON.parse(jsonStr)
+  openKafkaInboundModal(JSON.stringify(m))
+  toast('Modelo carregado — ajuste e salve', 'info')
+}
 
 let PROXY = 'http://localhost:3333'
 let state = { db: '', collection: '', docs: [], editId: null, lastUri: '' }
@@ -905,6 +966,7 @@ function showView(col) {
   document.getElementById('view-kafka-outbound').style.display = col === 'kafka_messages_mock' ? 'block' : 'none'
   document.getElementById('btnNovo').style.display = col === 'kafka_messages_mock' ? 'none' : 'inline-flex'
   document.getElementById('filter-type-wrap').style.display = col === 'mocks' ? 'flex' : 'none'
+  document.getElementById('filterStatus').style.display = col === 'mocks' || col === 'kafka_messages_mock_inbound' ? 'inline-block' : 'none'
 }
 
 function renderCurrent(docs) {
@@ -930,6 +992,15 @@ function filterDocs() {
   if (activeTypeFilter !== 'all' && state.collection === 'mocks') {
     filtered = filtered.filter(d => detectMockType(d) === activeTypeFilter)
   }
+  const statusFilter = document.getElementById('filterStatus')?.value || 'all'
+  if (statusFilter !== 'all') {
+    if (state.collection === 'mocks') {
+      filtered = filtered.filter(d => statusFilter === 'enabled' ? d.enabled : !d.enabled)
+    } else if (state.collection === 'kafka_messages_mock_inbound') {
+      filtered = filtered.filter(d => statusFilter === 'enabled' ? d.processed : !d.processed)
+    }
+  }
+  updateCount(filtered.length)
   renderCurrent(filtered)
 }
 
@@ -1009,6 +1080,7 @@ function renderApiMocks(docs) {
       <div class="mock-card-body">${payloadPreview}${payloadPreview.length >= 200 ? '…' : ''}</div>
       <div class="mock-card-footer">
         <button class="btn btn-ghost btn-sm" onclick='openApiMockModal(${JSON.stringify(JSON.stringify(m))})'>✏️ Editar</button>
+        <button class="btn btn-duplicate btn-sm" onclick='duplicateMock(${JSON.stringify(JSON.stringify(m))})'>📋 Duplicar</button>
         <button class="btn btn-${m.enabled ? 'warning' : 'success'} btn-sm" onclick='toggleMock("${id}", ${m.enabled})'>${m.enabled ? '⏸ Desativar' : '▶ Ativar'}</button>
         <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.payload || {}))})'>👁 Payload</button>
         ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
@@ -1019,6 +1091,7 @@ function renderApiMocks(docs) {
 
 async function toggleMock(id, current) {
   await api('updateOne', { collection: 'mocks', filter: { _id: id }, update: { $set: { enabled: !current } } })
+  toast(!current ? 'Mock ativado' : 'Mock desativado', !current ? 'success' : 'info')
   load()
 }
 
@@ -1175,6 +1248,7 @@ function parseGraphQL() {
 
 function detectMockType(m) {
   if (!m) return 'webclient'
+  if (m.type) return m.type
   if (m.externalMockProperties?.endpointId) return 'external'
   const id = m._id?.$oid || m._id || ''
   if (/^(GET|POST|PUT|DELETE|PATCH):/.test(id)) return 'webclient'
@@ -1207,7 +1281,7 @@ async function saveApiMock() {
   let payload
   try { payload = JSON.parse(getVal('apiPayload')) } catch { alert('Payload JSON inválido'); return }
 
-  const doc = { description: desc, enabled, payload, externalMockProperties: endpointId ? { endpointId, allowedUsers: users } : null }
+  const doc = { type: currentMockType, description: desc, enabled, payload, externalMockProperties: endpointId ? { endpointId, allowedUsers: users } : null }
 
   try {
     if (editId) {
@@ -1218,6 +1292,7 @@ async function saveApiMock() {
     }
     document.getElementById('modalApiMock').classList.remove('open')
     document.getElementById('apiMockId').disabled = false
+    toast('Mock salvo com sucesso!')
     load()
   } catch (e) { alert('Erro: ' + e.message) }
 }
@@ -1238,7 +1313,7 @@ function renderKafkaInbound(docs) {
       <td style="font-size:12px;color:var(--muted)">${formatDate(m.createdAt)}</td>
       <td><div class="actions">
         <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.payload || {}))})'>👁</button>
-        <button class="btn btn-ghost btn-sm" onclick='openKafkaInboundModal(${JSON.stringify(JSON.stringify(m))})'>📋 Usar</button>
+        <button class="btn btn-ghost btn-sm" onclick='openKafkaInboundModal(${JSON.stringify(JSON.stringify(m))})'>📋 Usar como modelo</button>
         ${m.processed ? `<button class="btn btn-warning btn-sm" onclick='reprocess("${id}")'>↺ Reprocessar</button>` : ''}
         ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
       </div></td>
@@ -1283,12 +1358,14 @@ async function saveKafkaInbound() {
   try {
     await api('insertOne', { collection: 'kafka_messages_mock_inbound', document: { topic, key, payload, processed: false, createdAt: new Date().toISOString() } })
     document.getElementById('modalKafkaInbound').classList.remove('open')
+    toast('Evento criado!')
     load()
   } catch (e) { alert('Erro: ' + e.message) }
 }
 
 async function reprocess(id) {
   await api('updateOne', { collection: 'kafka_messages_mock_inbound', filter: { _id: id }, update: { $set: { processed: false } } })
+  toast('Evento marcado para reprocessamento', 'info')
   load()
 }
 
@@ -1341,7 +1418,7 @@ async function save() {
       if (customId) doc._id = customId
       await api('insertOne', { collection: state.collection, document: doc })
     }
-    closeModal(); load()
+    toast('Documento salvo!'); closeModal(); load()
   } catch (e) { alert('Erro: ' + e.message) }
 }
 
@@ -1357,7 +1434,10 @@ function formatDate(val) {
   try { return new Date(val.$date || val).toLocaleString('pt-BR') } catch { return String(val) }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.getElementById('login').style.display !== 'none') connect() })
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login').style.display !== 'none') connect()
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); const s = document.getElementById('search'); if (s) { s.focus(); s.select() } }
+})
 
 // ── SETTINGS ──
 let currentCfgTab = 'proxy'
