@@ -113,7 +113,7 @@ O Mock Manager tem interfaces dedicadas para três collections. Para outras coll
 Gerencia mocks de respostas HTTP. Suporta três tipos:
 
 #### 🌐 WebClient Genérico
-Intercepta chamadas de saída do serviço para APIs externas via `WebClient`. O `_id` do documento deve ser exatamente `MÉTODO:/caminho`:
+Intercepta chamadas de saída do serviço para APIs externas via `WebClient`. O `_id` do documento deve ser exatamente `MÉTODO:/caminho` — e deve ser **idêntico** ao `endpointId` usado nos mocks por usuário para o mesmo endpoint:
 
 ```json
 {
@@ -260,6 +260,8 @@ Quando existem mocks do tipo **Por Usuário** e **WebClient Genérico** para o m
 
 1. **Por Usuário** — executado se o identificador estiver em `allowedUsers`
 2. **WebClient Genérico** — executado quando o identificador não está em nenhum mock por usuário
+
+O `_id` do mock genérico deve ser **idêntico** ao `externalMockProperties.endpointId` dos mocks por usuário para que a prioridade funcione corretamente.
 
 A interface exibe avisos visuais nos cards quando há conflito entre os dois tipos para o mesmo endpoint.
 

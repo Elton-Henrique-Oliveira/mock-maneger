@@ -310,11 +310,15 @@
         </select>
       </div>
 
-      <!-- só para xmock: importar contrato graphql -->
+      <!-- só para xmock: importar resposta real ou contrato graphql -->
       <div class="fg" id="fg-graphql" style="display:none">
-        <label>📌 Importar contrato GraphQL <span style="color:var(--muted);font-weight:400">(opcional — gera o payload automaticamente)</span></label>
-        <textarea id="graphqlContract" style="font-family:monospace;font-size:12px;min-height:100px" placeholder="Cole aqui sua query ou mutation GraphQL..."></textarea>
-        <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="parseGraphQL()">⚡ Gerar payload do contrato</button>
+        <label>📌 Importar resposta real <span style="color:var(--muted);font-weight:400">(cole a resposta da API e extraia o payload do mock)</span></label>
+        <textarea id="graphqlContract" style="font-family:monospace;font-size:12px;min-height:100px" placeholder='Cole aqui a resposta real da API (ex: {"data":{"myQuery":[...]}})'></textarea>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button type="button" class="btn btn-primary btn-sm" onclick="extractPayloadFromResponse()">⚡ Extrair payload</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="parseGraphQL()">📐 Gerar do contrato GraphQL</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px">💡 <b>Extrair payload</b>: cole a resposta real (com <code>data.queryName</code>) e o conteúdo interno será usado como payload do mock.<br>📐 <b>Gerar do contrato</b>: cole uma query/mutation GraphQL para gerar um esqueleto.</p>
       </div>
 
       <!-- só para external -->
@@ -1021,8 +1025,8 @@ async function toggleMock(id, current) {
 const MOCK_TYPES = {
   webclient: {
     idPlaceholder: 'GET:/v1/products/stock-status',
-    idLabel: 'ID (Método:Caminho — igual ao endpoint chamado pelo serviço)',
-    hint: '🌐 <b>WebClient Genérico</b> — Intercepta chamadas de saída do serviço para APIs externas.<br>O <b>ID deve ser exatamente</b> o método HTTP + caminho da URL chamada.<br>Exemplo: <code>GET:/v1/products/stock-status</code>'
+    idLabel: 'ID (deve ser idêntico ao endpointId do mock por usuário)',
+    hint: '🌐 <b>WebClient Genérico</b> — Intercepta chamadas de saída do serviço para APIs externas.<br>O <b>ID deve ser idêntico</b> ao <code>endpointId</code> usado nos mocks por usuário para o mesmo endpoint.<br>Exemplo: <code>GET:/v1/products/stock-status</code>'
   },
   external: {
     idPlaceholder: '',
@@ -1118,6 +1122,21 @@ function setMockType(type) {
   ;['webclient', 'external', 'xmock'].forEach(t => {
     document.getElementById(`tab-${t}`).className = `btn btn-sm ${t === type ? 'btn-primary' : 'btn-ghost'}`
   })
+}
+
+function extractPayloadFromResponse() {
+  const raw = document.getElementById('graphqlContract').value.trim()
+  if (!raw) { alert('Cole a resposta real da API primeiro'); return }
+  let json
+  try { json = JSON.parse(raw) } catch { alert('JSON inválido'); return }
+  if (json.data && typeof json.data === 'object') {
+    const keys = Object.keys(json.data)
+    const content = keys.length === 1 ? json.data[keys[0]] : json.data
+    setVal('apiPayload', content)
+  } else {
+    setVal('apiPayload', json)
+  }
+  editors.apiPayload.refresh()
 }
 
 function parseGraphQL() {
