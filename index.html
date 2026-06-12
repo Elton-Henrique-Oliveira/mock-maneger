@@ -1235,12 +1235,31 @@ function openKafkaInboundModal(jsonStr = null) {
   setTimeout(() => { editors.kafkaPayload.refresh(); setVal('kafkaPayload', m?.payload || {}) }, 30)
 }
 
+function convertDatesInPayload(obj) {
+  if (Array.isArray(obj)) return obj.map(convertDatesInPayload)
+  if (obj !== null && typeof obj === 'object') {
+    const result = {}
+    for (const [k, v] of Object.entries(obj)) result[k] = convertDatesInPayload(v)
+    return result
+  }
+  if (typeof obj === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(obj)) {
+      return Math.floor(new Date(obj + 'T00:00:00Z').getTime() / 86400000)
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(obj)) {
+      return new Date(obj).getTime()
+    }
+  }
+  return obj
+}
+
 async function saveKafkaInbound() {
   const topic = document.getElementById('kafkaTopic').value.trim()
   const key = document.getElementById('kafkaKey').value.trim() || null
   if (!topic) { alert('Informe o tópico'); return }
   let payload
   try { payload = JSON.parse(getVal('kafkaPayload')) } catch { alert('Payload JSON inválido'); return }
+  payload = convertDatesInPayload(payload)
   try {
     await api('insertOne', { collection: 'kafka_messages_mock_inbound', document: { topic, key, payload, processed: false, createdAt: new Date().toISOString() } })
     document.getElementById('modalKafkaInbound').classList.remove('open')
