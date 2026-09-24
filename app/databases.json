@@ -1,0 +1,10 @@
+[
+  {
+    "name": "secretariat",
+    "collections": ["mocks", "kafka_messages_mock_inbound", "kafka_messages_mock"]
+  },
+  {
+    "name": "internal-transfer",
+    "collections": ["mocks"]
+  }
+]
