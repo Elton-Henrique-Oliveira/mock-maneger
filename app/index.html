@@ -291,6 +291,11 @@
     <span class="results-count" id="resultsCount">0 resultados</span>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="btn btn-ghost btn-sm" id="btnRefresh" onclick="load()">↻ Atualizar</button>
+      <button class="btn btn-ghost btn-sm" onclick="backupDocs()" title="Baixar todos os documentos como JSON">⬇ Backup</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Importar backup JSON">
+        ⬆ Restaurar
+        <input type="file" accept=".json" style="display:none" onchange="restoreDocs(event)"/>
+      </label>
       <button class="btn btn-primary btn-sm" id="btnNovo" onclick="handleNew()">+ Novo mock</button>
     </div>
   </div>
@@ -447,7 +452,10 @@
 <div class="overlay" id="modalKafkaInbound">
   <div class="modal">
     <div class="modal-head">
-      <h3 id="modalKafkaTitle">Novo Evento Kafka</h3>
+      <div style="display:flex;align-items:center;gap:10px">
+        <h3 id="modalKafkaTitle">Novo Evento Kafka</h3>
+        <span id="kafkaModelBadge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(124,111,234,.15);color:var(--accent);border:1px solid rgba(124,111,234,.3)">A PARTIR DE MODELO</span>
+      </div>
       <button onclick="document.getElementById('modalKafkaInbound').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body">
@@ -930,6 +938,40 @@ webClient.post()
   </div>
 </div>
 
+<!-- MODAL RESTAURAR BACKUP -->
+<div class="overlay" id="modalRestore">
+  <div class="modal" style="width:500px;max-width:96vw">
+    <div class="modal-head">
+      <h3>⬆ Restaurar Backup</h3>
+      <button onclick="document.getElementById('modalRestore').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-box" style="margin-bottom:16px">
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">
+          <div id="restoreInfo" style="margin-bottom:6px;color:var(--text);font-weight:600"></div>
+          <div>Destino: <code id="restoreTarget"></code></div>
+          <div>Total a importar: <b id="restoreCount"></b> documentos</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--surface2);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:4px">⚠️ Substituir</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Remove <b>todos</b> os documentos atuais da collection e insere os do backup. Use para restaurar um estado exato.</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid rgba(52,211,153,.25);border-radius:8px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:4px">✅ Mesclar</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Insere os documentos do backup sem remover os existentes. Documentos com <code>_id</code> duplicado são ignorados.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalRestore').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-success btn-sm" onclick="confirmRestore('merge')">✅ Mesclar</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmRestore('replace')">⚠️ Substituir</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -956,21 +998,12 @@ function toast(msg, type = 'success') {
 function updateCount(n) { document.getElementById('resultsCount').textContent = `${n} resultado${n !== 1 ? 's' : ''}` }
 
 // ── DUPLICATE MOCK ──
-async function duplicateMock(jsonStr) {
+function duplicateMock(jsonStr) {
   const m = JSON.parse(jsonStr)
-  const origId = m._id?.$oid || m._id || ''
+  // Remove o _id para que o modal trate como "Novo Mock" mas com campos pré-preenchidos
   delete m._id
-  const type = detectMockType(m)
-  if (type === 'webclient') {
-    const newId = prompt('ID do mock duplicado:', origId + '-copy')
-    if (!newId) return
-    m._id = newId
-  }
-  try {
-    await api('insertOne', { collection: state.collection, document: m })
-    toast('Mock duplicado com sucesso!')
-    load()
-  } catch (e) { toast('Erro: ' + e.message, 'error') }
+  // Abre o modal de criação pré-preenchido — usuário revisa e define o ID antes de salvar
+  openApiMockModal(JSON.stringify(m), true)
 }
 
 // ── DUPLICATE KAFKA ──
@@ -1402,9 +1435,11 @@ function renderApiMocks(docs) {
 }
 
 async function toggleMock(id, current) {
-  await api('updateOne', { collection: 'mocks', filter: { _id: id }, update: { $set: { enabled: !current } } })
-  toast(!current ? 'Mock ativado' : 'Mock desativado', !current ? 'success' : 'info')
-  load()
+  try {
+    await api('updateOne', { collection: 'mocks', filter: { _id: id }, update: { $set: { enabled: !current } } })
+    toast(!current ? 'Mock ativado' : 'Mock desativado', !current ? 'success' : 'info')
+    load()
+  } catch (e) { toast('Erro ao alterar mock: ' + e.message, 'error') }
 }
 
 const MOCK_TYPES = {
@@ -1567,17 +1602,26 @@ function detectMockType(m) {
   return 'xmock'
 }
 
-function openApiMockModal(jsonStr = null) {
+function openApiMockModal(jsonStr = null, isDuplicate = false) {
   const m = jsonStr ? JSON.parse(jsonStr) : null
-  document.getElementById('modalApiTitle').textContent = m ? 'Editar API Mock' : 'Novo API Mock'
-  document.getElementById('apiMockEditId').value = m ? (m._id?.$oid || m._id || '') : ''
-  document.getElementById('apiMockId').value = m ? (m._id?.$oid || m._id || '') : ''
-  document.getElementById('apiMockId').disabled = !!m
+  const isEdit = !!m && !isDuplicate && (m._id?.$oid || m._id)
+
+  if (isDuplicate) {
+    document.getElementById('modalApiTitle').textContent = '📋 Duplicar API Mock'
+  } else {
+    document.getElementById('modalApiTitle').textContent = isEdit ? 'Editar API Mock' : 'Novo API Mock'
+  }
+
+  document.getElementById('apiMockEditId').value = isEdit ? (m._id?.$oid || m._id || '') : ''
+  document.getElementById('apiMockId').value = isEdit ? (m._id?.$oid || m._id || '') : ''
+  document.getElementById('apiMockId').disabled = isEdit
   document.getElementById('apiMockDesc').value = m?.description || ''
   document.getElementById('apiMockEndpointId').value = m?.externalMockProperties?.endpointId || ''
   document.getElementById('apiMockUsers').value = (m?.externalMockProperties?.allowedUsers || []).join(', ')
   document.getElementById('apiMockEnabled').checked = m ? m.enabled : true
   document.getElementById('catalogSelect').value = ''
+  // Limpa o textarea de importação GraphQL/resposta ao abrir modal
+  document.getElementById('graphqlContract').value = ''
   loadCatalog().then(() => setMockType(m ? detectMockType(m) : 'webclient'))
   document.getElementById('modalApiMock').classList.add('open')
   setTimeout(() => { editors.apiPayload.refresh(); setVal('apiPayload', m?.payload || {}) }, 30)
@@ -1591,7 +1635,20 @@ async function saveApiMock() {
   const users = document.getElementById('apiMockUsers').value.split(',').map(s => s.trim()).filter(Boolean)
   const enabled = document.getElementById('apiMockEnabled').checked
   let payload
-  try { payload = JSON.parse(getVal('apiPayload')) } catch { alert('Payload JSON inválido'); return }
+  try { payload = JSON.parse(getVal('apiPayload')) } catch { toast('Payload JSON inválido', 'error'); return }
+
+  // Validação de ID obrigatório para webclient e xmock
+  if (!editId && currentMockType !== 'external' && !id) {
+    toast('O campo ID é obrigatório para este tipo de mock', 'error')
+    document.getElementById('apiMockId').focus()
+    return
+  }
+  // Validação de endpointId obrigatório para external
+  if (currentMockType === 'external' && !endpointId) {
+    toast('O campo EndpointId é obrigatório', 'error')
+    document.getElementById('apiMockEndpointId').focus()
+    return
+  }
 
   const doc = { type: currentMockType, description: desc, enabled, payload, externalMockProperties: endpointId ? { endpointId, allowedUsers: users } : null }
 
@@ -1606,38 +1663,106 @@ async function saveApiMock() {
     document.getElementById('apiMockId').disabled = false
     toast('Mock salvo com sucesso!')
     load()
-  } catch (e) { alert('Erro: ' + e.message) }
+  } catch (e) { toast('Erro ao salvar mock: ' + e.message, 'error') }
 }
 
 // ── VIEW KAFKA INBOUND ──
 function renderKafkaInbound(docs) {
   const tbody = document.getElementById('tbody-kafka-inbound')
-  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum evento encontrado</td></tr>'; return }
-  tbody.innerHTML = docs.map(m => {
+  tbody.innerHTML = ''
+  if (!docs.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum evento encontrado</td></tr>'
+    return
+  }
+
+  docs.forEach(m => {
     const id = m._id?.$oid || m._id || ''
     const payloadPreview = JSON.stringify(m.payload || {}).slice(0, 80)
-    const keyDisplay = m.key == null ? '—' : (typeof m.key === 'object' ? JSON.stringify(m.key) : m.key)
-    return `<tr>
-      <td style="font-weight:600">${m.topic || '—'}</td>
-      <td class="json-cell" title="${keyDisplay}">${keyDisplay}</td>
-      <td class="json-cell">${payloadPreview}${payloadPreview.length >= 80 ? '…' : ''}</td>
-      <td><span class="badge ${m.processed ? 'badge-done' : 'badge-pending'}">${m.processed ? '✓ Processado' : '⏳ Pendente'}</span></td>
-      <td style="font-size:12px;color:var(--muted)">${formatDate(m.createdAt)}</td>
-      <td><div class="actions">
-        <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.payload || {}))})'>👁</button>
-        <button class="btn btn-ghost btn-sm" onclick='openKafkaInboundModal(${JSON.stringify(JSON.stringify(m))})'>📋 Usar como modelo</button>
-        ${m.processed ? `<button class="btn btn-warning btn-sm" onclick='reprocess("${id}")'>↺ Reprocessar</button>` : ''}
-        ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
-      </div></td>
-    </tr>`
-  }).join('')
+    const keyDisplay = m.key == null ? '—' : (typeof m.key === 'object' ? JSON.stringify(m.key) : String(m.key))
+
+    const tr = document.createElement('tr')
+
+    // Tópico
+    const tdTopic = document.createElement('td')
+    tdTopic.style.fontWeight = '600'
+    tdTopic.textContent = m.topic || '—'
+
+    // Key
+    const tdKey = document.createElement('td')
+    tdKey.className = 'json-cell'
+    tdKey.title = keyDisplay
+    tdKey.textContent = keyDisplay
+
+    // Payload preview
+    const tdPayload = document.createElement('td')
+    tdPayload.className = 'json-cell'
+    tdPayload.textContent = payloadPreview + (payloadPreview.length >= 80 ? '…' : '')
+
+    // Status badge
+    const tdStatus = document.createElement('td')
+    const badge = document.createElement('span')
+    badge.className = `badge ${m.processed ? 'badge-done' : 'badge-pending'}`
+    badge.textContent = m.processed ? '✓ Processado' : '⏳ Pendente'
+    tdStatus.appendChild(badge)
+
+    // Data
+    const tdDate = document.createElement('td')
+    tdDate.style.cssText = 'font-size:12px;color:var(--muted)'
+    tdDate.textContent = formatDate(m.createdAt)
+
+    // Ações
+    const tdActions = document.createElement('td')
+    const actions = document.createElement('div')
+    actions.className = 'actions'
+
+    const btnView = document.createElement('button')
+    btnView.className = 'btn btn-ghost btn-sm'
+    btnView.textContent = '👁'
+    btnView.title = 'Ver payload'
+    btnView.onclick = () => viewDoc(JSON.stringify(m.payload || {}))
+
+    const btnModel = document.createElement('button')
+    btnModel.className = 'btn btn-ghost btn-sm'
+    btnModel.textContent = '📋 Usar como modelo'
+    btnModel.onclick = () => openKafkaInboundModal(JSON.stringify(m))
+
+    actions.appendChild(btnView)
+    actions.appendChild(btnModel)
+
+    if (m.processed) {
+      const btnReprocess = document.createElement('button')
+      btnReprocess.className = 'btn btn-warning btn-sm'
+      btnReprocess.textContent = '↺ Reprocessar'
+      btnReprocess.onclick = () => reprocess(id)
+      actions.appendChild(btnReprocess)
+    }
+
+    if (allowDelete) {
+      const btnDel = document.createElement('button')
+      btnDel.className = 'btn btn-danger btn-sm'
+      btnDel.textContent = '🗑'
+      btnDel.onclick = () => del(id)
+      actions.appendChild(btnDel)
+    }
+
+    tdActions.appendChild(actions)
+
+    tr.appendChild(tdTopic)
+    tr.appendChild(tdKey)
+    tr.appendChild(tdPayload)
+    tr.appendChild(tdStatus)
+    tr.appendChild(tdDate)
+    tr.appendChild(tdActions)
+    tbody.appendChild(tr)
+  })
 }
 
 function openKafkaInboundModal(jsonStr = null) {
   const m = jsonStr ? JSON.parse(jsonStr) : null
-  document.getElementById('modalKafkaTitle').textContent = m ? 'Usar como modelo' : 'Novo Evento Kafka'
+  document.getElementById('modalKafkaTitle').textContent = m ? 'Novo Evento Kafka' : 'Novo Evento Kafka'
+  document.getElementById('kafkaModelBadge').style.display = m ? 'inline-block' : 'none'
   document.getElementById('kafkaTopic').value = m?.topic || ''
-  document.getElementById('kafkaKey').value = m?.key || ''
+  document.getElementById('kafkaKey').value = m?.key != null ? m.key : ''
   document.getElementById('modalKafkaInbound').classList.add('open')
   setTimeout(() => { editors.kafkaPayload.refresh(); setVal('kafkaPayload', m?.payload || {}) }, 30)
 }
@@ -1661,18 +1786,21 @@ function convertDatesInPayload(obj) {
 }
 
 async function saveKafkaInbound() {
+  const btn = document.querySelector('#modalKafkaInbound .btn-primary')
   const topic = document.getElementById('kafkaTopic').value.trim()
   const key = document.getElementById('kafkaKey').value.trim() || null
-  if (!topic) { alert('Informe o tópico'); return }
+  if (!topic) { toast('Informe o tópico', 'error'); document.getElementById('kafkaTopic').focus(); return }
   let payload
-  try { payload = JSON.parse(getVal('kafkaPayload')) } catch { alert('Payload JSON inválido'); return }
+  try { payload = JSON.parse(getVal('kafkaPayload')) } catch { toast('Payload JSON inválido', 'error'); return }
   payload = convertDatesInPayload(payload)
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'
   try {
     await api('insertOne', { collection: 'kafka_messages_mock_inbound', document: { topic, key, payload, processed: false, createdAt: new Date().toISOString() } })
     document.getElementById('modalKafkaInbound').classList.remove('open')
     toast('Evento criado!')
     load()
-  } catch (e) { alert('Erro: ' + e.message) }
+  } catch (e) { toast('Erro ao criar evento: ' + e.message, 'error') }
+  finally { btn.disabled = false; btn.textContent = 'Enviar Evento' }
 }
 
 async function reprocess(id) {
@@ -1722,7 +1850,7 @@ function closeModal() { document.getElementById('modalDoc').classList.remove('op
 
 async function save() {
   let doc
-  try { doc = JSON.parse(getVal('main')) } catch { alert('JSON inválido'); return }
+  try { doc = JSON.parse(getVal('main')) } catch { toast('JSON inválido', 'error'); return }
   try {
     if (state.editId) {
       const { _id, ...rest } = doc
@@ -1733,7 +1861,7 @@ async function save() {
       await api('insertOne', { collection: state.collection, document: doc })
     }
     toast('Documento salvo!'); closeModal(); load()
-  } catch (e) { alert('Erro: ' + e.message) }
+  } catch (e) { toast('Erro ao salvar: ' + e.message, 'error') }
 }
 
 async function del(id) {
@@ -1749,6 +1877,114 @@ async function del(id) {
 function formatDate(val) {
   if (!val) return '—'
   try { return new Date(val.$date || val).toLocaleString('pt-BR') } catch { return String(val) }
+}
+
+// ── BACKUP / RESTAURAÇÃO ──
+function backupDocs() {
+  if (!state.docs.length) { toast('Nenhum documento para exportar', 'info'); return }
+
+  const backup = {
+    _meta: {
+      database: state.db,
+      collection: state.collection,
+      exportedAt: new Date().toISOString(),
+      total: state.docs.length
+    },
+    documents: state.docs
+  }
+
+  const json = JSON.stringify(backup, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+
+  const date = new Date().toISOString().slice(0, 10)
+  const filename = `backup_${state.db}_${state.collection}_${date}.json`
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+
+  toast(`Backup salvo: ${filename}`)
+}
+
+async function restoreDocs(event) {
+  const file = event.target.files[0]
+  // Limpa o input para permitir reimportar o mesmo arquivo
+  event.target.value = ''
+  if (!file) return
+
+  let backup
+  try {
+    backup = JSON.parse(await file.text())
+  } catch {
+    toast('Arquivo JSON inválido', 'error')
+    return
+  }
+
+  // Aceita tanto o formato com _meta quanto um array direto
+  const docs = Array.isArray(backup) ? backup : backup.documents
+  if (!Array.isArray(docs) || !docs.length) {
+    toast('Nenhum documento encontrado no arquivo', 'error')
+    return
+  }
+
+  // Mostra modal de confirmação com opções
+  const meta = backup._meta
+  const infoLine = meta
+    ? `Arquivo: ${meta.database}/${meta.collection} — ${meta.total} documentos (${meta.exportedAt?.slice(0,10)})`
+    : `${docs.length} documentos sem metadados`
+
+  document.getElementById('restoreInfo').textContent = infoLine
+  document.getElementById('restoreCount').textContent = docs.length
+  document.getElementById('restoreTarget').textContent = `${state.db} / ${state.collection}`
+  document.getElementById('modalRestore').classList.add('open')
+
+  // Armazena temporariamente os docs para uso pelos botões do modal
+  window._pendingRestoreDocs = docs
+}
+
+async function confirmRestore(mode) {
+  const docs = window._pendingRestoreDocs
+  if (!docs) return
+  document.getElementById('modalRestore').classList.remove('open')
+
+  const btnLabel = mode === 'replace' ? 'Substituindo...' : 'Mesclando...'
+  toast(btnLabel, 'info')
+
+  try {
+    if (mode === 'replace') {
+      // Deleta todos os documentos da collection antes de inserir
+      const current = await api('find', { collection: state.collection, limit: 5000 })
+      for (const d of current.documents) {
+        const id = d._id?.$oid || d._id
+        if (id) await api('deleteOne', { collection: state.collection, filter: { _id: id } })
+      }
+    }
+
+    let inserted = 0
+    let skipped  = 0
+    for (const doc of docs) {
+      try {
+        await api('insertOne', { collection: state.collection, document: doc })
+        inserted++
+      } catch {
+        // Em modo mesclar, ignora duplicatas silenciosamente
+        skipped++
+      }
+    }
+
+    const msg = skipped > 0
+      ? `Restauração concluída: ${inserted} inseridos, ${skipped} ignorados (duplicatas)`
+      : `Restauração concluída: ${inserted} documentos inseridos`
+    toast(msg)
+    load()
+  } catch (e) {
+    toast('Erro na restauração: ' + e.message, 'error')
+  } finally {
+    window._pendingRestoreDocs = null
+  }
 }
 
 document.addEventListener('keydown', e => {
