@@ -227,7 +227,7 @@
       <button type="button" class="btn btn-ghost btn-sm" id="btnManualToggle" onclick="toggleManual()">✏️ Digitar manualmente</button>
     </div>
     <div class="login-divider"></div>
-    <div class="fg">
+    <div class="fg" id="fg-proxyPort">
       <label>Porta do Proxy</label>
       <input id="proxyPort" type="text" placeholder="3333" value="3333"/>
     </div>
@@ -241,6 +241,10 @@
       <button type="button" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openSettings()">⚙️</button>
     </div>
     <div id="loginAlert"></div>
+    <div id="proxyStatus" style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted)">
+      <span id="proxyStatusDot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0"></span>
+      <span id="proxyStatusText">Verificando proxy...</span>
+    </div>
   </div>
 </div>
 
@@ -269,7 +273,7 @@
     </div>
     <div class="toolbar-sep"></div>
     <div class="limit-wrap">
-      <input type="number" id="queryLimit" class="limit-input" value="50" min="1" max="5000" title="Limite de documentos"/>
+      <input type="number" id="queryLimit" class="limit-input" value="1000" min="1" max="5000" title="Limite de documentos" onkeydown="if(event.key==='Enter') load()"/>
       <span class="limit-label">docs</span>
     </div>
     <div class="toolbar-sep"></div>
@@ -286,7 +290,12 @@
     </select>
     <span class="results-count" id="resultsCount">0 resultados</span>
     <div style="margin-left:auto;display:flex;gap:6px">
-      <button class="btn btn-ghost btn-sm" onclick="load()">↻ Atualizar</button>
+      <button class="btn btn-ghost btn-sm" id="btnRefresh" onclick="load()">↻ Atualizar</button>
+      <button class="btn btn-ghost btn-sm" onclick="backupDocs()" title="Baixar todos os documentos como JSON">⬇ Backup</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Importar backup JSON">
+        ⬆ Restaurar
+        <input type="file" accept=".json" style="display:none" onchange="restoreDocs(event)"/>
+      </label>
       <button class="btn btn-primary btn-sm" id="btnNovo" onclick="handleNew()">+ Novo mock</button>
     </div>
   </div>
@@ -443,7 +452,10 @@
 <div class="overlay" id="modalKafkaInbound">
   <div class="modal">
     <div class="modal-head">
-      <h3 id="modalKafkaTitle">Novo Evento Kafka</h3>
+      <div style="display:flex;align-items:center;gap:10px">
+        <h3 id="modalKafkaTitle">Novo Evento Kafka</h3>
+        <span id="kafkaModelBadge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(124,111,234,.15);color:var(--accent);border:1px solid rgba(124,111,234,.3)">A PARTIR DE MODELO</span>
+      </div>
       <button onclick="document.getElementById('modalKafkaInbound').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body">
@@ -508,7 +520,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="document.getElementById('modalSettings').classList.remove('open')">Cancelar</button>
-      <button class="btn btn-primary" id="cfgSaveBtn" onclick="saveSettings()">Salvar</button>
+      <button class="btn btn-primary" id="cfgSaveBtn" onclick="saveSettings()">Salvar Proxy</button>
     </div>
   </div>
 </div>
@@ -926,6 +938,40 @@ webClient.post()
   </div>
 </div>
 
+<!-- MODAL RESTAURAR BACKUP -->
+<div class="overlay" id="modalRestore">
+  <div class="modal" style="width:500px;max-width:96vw">
+    <div class="modal-head">
+      <h3>⬆ Restaurar Backup</h3>
+      <button onclick="document.getElementById('modalRestore').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-box" style="margin-bottom:16px">
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">
+          <div id="restoreInfo" style="margin-bottom:6px;color:var(--text);font-weight:600"></div>
+          <div>Destino: <code id="restoreTarget"></code></div>
+          <div>Total a importar: <b id="restoreCount"></b> documentos</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--surface2);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:4px">⚠️ Substituir</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Remove <b>todos</b> os documentos atuais da collection e insere os do backup. Use para restaurar um estado exato.</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid rgba(52,211,153,.25);border-radius:8px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:4px">✅ Mesclar</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Insere os documentos do backup sem remover os existentes. Documentos com <code>_id</code> duplicado são ignorados.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalRestore').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-success btn-sm" onclick="confirmRestore('merge')">✅ Mesclar</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmRestore('replace')">⚠️ Substituir</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -952,21 +998,12 @@ function toast(msg, type = 'success') {
 function updateCount(n) { document.getElementById('resultsCount').textContent = `${n} resultado${n !== 1 ? 's' : ''}` }
 
 // ── DUPLICATE MOCK ──
-async function duplicateMock(jsonStr) {
+function duplicateMock(jsonStr) {
   const m = JSON.parse(jsonStr)
-  const origId = m._id?.$oid || m._id || ''
+  // Remove o _id para que o modal trate como "Novo Mock" mas com campos pré-preenchidos
   delete m._id
-  const type = detectMockType(m)
-  if (type === 'webclient') {
-    const newId = prompt('ID do mock duplicado:', origId + '-copy')
-    if (!newId) return
-    m._id = newId
-  }
-  try {
-    await api('insertOne', { collection: state.collection, document: m })
-    toast('Mock duplicado com sucesso!')
-    load()
-  } catch (e) { toast('Erro: ' + e.message, 'error') }
+  // Abre o modal de criação pré-preenchido — usuário revisa e define o ID antes de salvar
+  openApiMockModal(JSON.stringify(m), true)
 }
 
 // ── DUPLICATE KAFKA ──
@@ -976,7 +1013,11 @@ function duplicateKafka(jsonStr) {
   toast('Modelo carregado — ajuste e salve', 'info')
 }
 
-let PROXY = 'http://localhost:3333'
+// Quando servido via HTTP pelo proxy, usa a mesma origem (funciona em qualquer host/porta/WSL)
+// Quando aberto como file://, mantém o fallback para localhost:3333
+let PROXY = window.location.protocol === 'file:'
+  ? 'http://localhost:3333'
+  : window.location.origin
 let state = { db: '', collection: '', docs: [], editId: null, lastUri: '' }
 let dbList = []
 let editors = {}
@@ -1024,7 +1065,8 @@ function clearLoginData() { localStorage.removeItem(LS_KEY) }
 async function connect() {
   const btn = document.getElementById('connectBtn')
   const port = document.getElementById('proxyPort').value.trim() || '3333'
-  PROXY = `http://localhost:${port}`
+  // Só reconstrói PROXY se rodando como file:// (modo legado)
+  if (window.location.protocol === 'file:') PROXY = `http://localhost:${port}`
   const uri = document.getElementById('uri').value.trim()
   const database = manualMode ? document.getElementById('databaseManual').value.trim() : document.getElementById('database').value
   const collection = manualMode ? document.getElementById('collectionManual').value.trim() : document.getElementById('collectionInput').value
@@ -1042,7 +1084,8 @@ async function connect() {
     document.getElementById('topCollection').textContent = collection
     initEditors(); load()
   } catch (e) {
-    showAlert('Falha na conexão. Verifique se o proxy está rodando e a URI está correta.', 'error')
+    const detail = e.message ? ` (${e.message})` : ''
+    showAlert(`Falha na conexão. Verifique se o proxy está rodando e a URI está correta.${detail}`, 'error')
     btn.disabled = false; btn.innerHTML = 'Conectar'
   }
 }
@@ -1050,6 +1093,7 @@ async function connect() {
 function showAlert(msg, type) { document.getElementById('loginAlert').innerHTML = `<div class="alert alert-${type}">${msg}</div>` }
 
 function logout() {
+  if (!confirm('Deseja sair? Você precisará se reconectar.')) return
   state = { db: '', collection: '', docs: [], editId: null, lastUri: '' }
   clearLoginData()
   document.getElementById('app').style.display = 'none'
@@ -1147,13 +1191,19 @@ async function load() {
   document.getElementById('tbody-kafka-outbound').innerHTML = spinner
   document.getElementById('cards-mocks').innerHTML = '<div style="color:var(--muted);padding:24px"><span class="spinner"></span></div>'
 
+  const btnRefresh = document.getElementById('btnRefresh')
+  if (btnRefresh) { btnRefresh.disabled = true; btnRefresh.innerHTML = '<span class="spinner"></span>' }
+
   try {
-    const limit = parseInt(document.getElementById('queryLimit').value) || 50
+    const limit = parseInt(document.getElementById('queryLimit').value) || 1000
     const { documents } = await api('find', { collection: state.collection, limit })
     state.docs = documents
     filterDocs()
   } catch (e) {
     document.getElementById('tbody').innerHTML = `<tr><td colspan="3" class="empty">Erro: ${e.message}</td></tr>`
+    toast('Erro ao carregar dados: ' + e.message, 'error')
+  } finally {
+    if (btnRefresh) { btnRefresh.disabled = false; btnRefresh.innerHTML = '↻ Atualizar' }
   }
 }
 
@@ -1165,6 +1215,12 @@ function showView(col) {
   document.getElementById('btnNovo').style.display = col === 'kafka_messages_mock' ? 'none' : 'inline-flex'
   document.getElementById('filter-type-wrap').style.display = col === 'mocks' ? 'flex' : 'none'
   document.getElementById('filterStatus').style.display = col === 'mocks' || col === 'kafka_messages_mock_inbound' ? 'inline-block' : 'none'
+  // Ajusta labels do filtro de status conforme a collection
+  const isKafka = col === 'kafka_messages_mock_inbound'
+  const filterStatus = document.getElementById('filterStatus')
+  filterStatus.options[1].text = isKafka ? '⏳ Pendentes' : '✅ Ativos'
+  filterStatus.options[2].text = isKafka ? '✓ Processados' : '⏸ Inativos'
+  filterStatus.value = 'all'
 }
 
 function renderCurrent(docs) {
@@ -1231,62 +1287,159 @@ function renderGeneric(docs) {
 // ── VIEW API MOCKS ──
 function renderApiMocks(docs) {
   const container = document.getElementById('cards-mocks')
-  if (!docs.length) { container.innerHTML = '<div style="color:var(--muted);padding:24px;grid-column:1/-1;text-align:center">Nenhum mock encontrado</div>'; return }
+  container.innerHTML = ''
 
-  const webclients = docs.filter(m => !m.externalMockProperties?.endpointId && /^(GET|POST|PUT|DELETE|PATCH):/.test(m._id?.$oid || m._id || ''))
-  const externals  = docs.filter(m => m.externalMockProperties?.endpointId)
-  const xmocks     = docs.filter(m => !m.externalMockProperties?.endpointId && !/^(GET|POST|PUT|DELETE|PATCH):/.test(m._id?.$oid || m._id || ''))
+  if (!docs.length) {
+    const empty = document.createElement('div')
+    empty.style.cssText = 'color:var(--muted);padding:24px;grid-column:1/-1;text-align:center'
+    empty.textContent = 'Nenhum mock encontrado'
+    container.appendChild(empty)
+    return
+  }
 
-  // detectar conflitos: webclient genérico que tem um por usuário para o mesmo endpoint
-  const externalEndpoints = new Set(externals.map(m => m.externalMockProperties.endpointId))
-  const conflicts = new Set(webclients.filter(m => externalEndpoints.has(m._id?.$oid || m._id || '')).map(m => m._id?.$oid || m._id || ''))
+  // detectar conflitos usando state.docs completo (não o subset filtrado)
+  const allDocs = state.docs
+  const allWebclients = allDocs.filter(m => !m.externalMockProperties?.endpointId && /^(GET|POST|PUT|DELETE|PATCH):/.test(m._id?.$oid || m._id || ''))
+  const allExternals  = allDocs.filter(m => m.externalMockProperties?.endpointId)
+  const externalEndpoints = new Set(allExternals.map(m => m.externalMockProperties.endpointId))
+  const conflicts = new Set(allWebclients.filter(m => externalEndpoints.has(m._id?.$oid || m._id || '')).map(m => m._id?.$oid || m._id || ''))
 
-  container.innerHTML = docs.map(m => {
-    const id = m._id?.$oid || m._id || ''
-    const type = detectMockType(m)
+  const typeBadgeColor   = { webclient: '#1e2a4a', external: '#1a3a2a', xmock: '#2a1a3a' }
+  const typeBorderColor  = { webclient: 'var(--accent)', external: 'var(--success)', xmock: 'var(--warning)' }
+  const typeLabel        = { webclient: '🌐 WebClient', external: '👤 Por Usuário', xmock: '🔖 X-MOCK-ID' }
+
+  docs.forEach(m => {
+    const id         = m._id?.$oid || m._id || ''
+    const type       = detectMockType(m)
     const endpointId = m.externalMockProperties?.endpointId || ''
-    const users = (m.externalMockProperties?.allowedUsers || []).join(', ')
-    const payloadPreview = JSON.stringify(m.payload || {}, null, 2).slice(0, 200)
-    const typeLabel = { webclient: '🌐 WebClient', external: '👤 Por Usuário', xmock: '🔖 X-MOCK-ID' }[type]
-    const typeBadgeColor = { webclient: '#1e2a4a', external: '#1a3a2a', xmock: '#2a1a3a' }[type]
-    const typeBorderColor = { webclient: 'var(--accent)', external: 'var(--success)', xmock: 'var(--warning)' }[type]
+    const users      = (m.externalMockProperties?.allowedUsers || []).join(', ')
+    const borderColor = m.enabled ? typeBorderColor[type] : 'var(--border)'
 
-    const conflictWarning = type === 'external'
-      ? `<div class="warn-priority-1">⚡ <b>Prioridade 1</b> — Executado antes do WebClient Genérico para o mesmo endpoint.</div>`
-      : type === 'webclient' && conflicts.has(id)
-      ? `<div class="warn-priority-2">⚠️ <b>Prioridade 2</b> — Existe um mock Por Usuário para este endpoint. Este é o fallback.</div>`
-      : ''
+    // ── card root ──
+    const card = document.createElement('div')
+    card.className = 'mock-card'
+    card.style.borderColor = borderColor
 
-    return `<div class="mock-card" style="border-color:${m.enabled ? typeBorderColor : 'var(--border)'}">
-      <div class="mock-card-header">
-        <div class="mock-card-meta">
-          <div class="mock-card-type-row">
-            <span class="mock-type-badge" style="background:${typeBadgeColor};color:${typeBorderColor};border:1px solid ${typeBorderColor}">${typeLabel}</span>
-            <span class="badge ${m.enabled ? 'badge-on' : 'badge-off'}" style="font-size:10px">${m.enabled ? '● Ativo' : '● Inativo'}</span>
-          </div>
-          <div class="mock-card-title">${id}</div>
-          ${m.description ? `<div class="mock-card-desc">${m.description}</div>` : ''}
-          ${endpointId ? `<div class="mock-card-sub">🔗 ${endpointId}</div>` : ''}
-          ${users ? `<div class="mock-card-sub">👤 ${users}</div>` : ''}
-        </div>
-      </div>
-      ${conflictWarning}
-      <div class="mock-card-body">${payloadPreview}${payloadPreview.length >= 200 ? '…' : ''}</div>
-      <div class="mock-card-footer">
-        <button class="btn btn-ghost btn-sm" onclick='openApiMockModal(${JSON.stringify(JSON.stringify(m))})'>✏️ Editar</button>
-        <button class="btn btn-duplicate btn-sm" onclick='duplicateMock(${JSON.stringify(JSON.stringify(m))})'>📋 Duplicar</button>
-        <button class="btn btn-${m.enabled ? 'warning' : 'success'} btn-sm" onclick='toggleMock("${id}", ${m.enabled})'>${m.enabled ? '⏸ Desativar' : '▶ Ativar'}</button>
-        <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.payload || {}))})'>👁 Payload</button>
-        ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
-      </div>
-    </div>`
-  }).join('')
+    // ── header ──
+    const header = document.createElement('div')
+    header.className = 'mock-card-header'
+
+    const meta = document.createElement('div')
+    meta.className = 'mock-card-meta'
+
+    const typeRow = document.createElement('div')
+    typeRow.className = 'mock-card-type-row'
+
+    const typeBadge = document.createElement('span')
+    typeBadge.className = 'mock-type-badge'
+    typeBadge.style.cssText = `background:${typeBadgeColor[type]};color:${typeBorderColor[type]};border:1px solid ${typeBorderColor[type]}`
+    typeBadge.textContent = typeLabel[type]
+
+    const statusBadge = document.createElement('span')
+    statusBadge.className = `badge ${m.enabled ? 'badge-on' : 'badge-off'}`
+    statusBadge.style.fontSize = '10px'
+    statusBadge.textContent = m.enabled ? '● Ativo' : '● Inativo'
+
+    typeRow.appendChild(typeBadge)
+    typeRow.appendChild(statusBadge)
+
+    const title = document.createElement('div')
+    title.className = 'mock-card-title'
+    title.textContent = id
+
+    meta.appendChild(typeRow)
+    meta.appendChild(title)
+
+    if (m.description) {
+      const desc = document.createElement('div')
+      desc.className = 'mock-card-desc'
+      desc.textContent = m.description
+      meta.appendChild(desc)
+    }
+    if (endpointId) {
+      const sub = document.createElement('div')
+      sub.className = 'mock-card-sub'
+      sub.textContent = '🔗 ' + endpointId
+      meta.appendChild(sub)
+    }
+    if (users) {
+      const sub = document.createElement('div')
+      sub.className = 'mock-card-sub'
+      sub.textContent = '👤 ' + users
+      meta.appendChild(sub)
+    }
+
+    header.appendChild(meta)
+    card.appendChild(header)
+
+    // ── conflict warning ──
+    if (type === 'external') {
+      const warn = document.createElement('div')
+      warn.className = 'warn-priority-1'
+      warn.innerHTML = '⚡ <b>Prioridade 1</b> — Executado antes do WebClient Genérico para o mesmo endpoint.'
+      card.appendChild(warn)
+    } else if (type === 'webclient' && conflicts.has(id)) {
+      const warn = document.createElement('div')
+      warn.className = 'warn-priority-2'
+      warn.innerHTML = '⚠️ <b>Prioridade 2</b> — Existe um mock Por Usuário para este endpoint. Este é o fallback.'
+      card.appendChild(warn)
+    }
+
+    // ── payload preview ──
+    const body = document.createElement('div')
+    body.className = 'mock-card-body'
+    const payloadStr = JSON.stringify(m.payload || {}, null, 2)
+    body.textContent = payloadStr.length > 200 ? payloadStr.slice(0, 200) + '…' : payloadStr
+    card.appendChild(body)
+
+    // ── footer actions ──
+    const footer = document.createElement('div')
+    footer.className = 'mock-card-footer'
+
+    const btnEdit = document.createElement('button')
+    btnEdit.className = 'btn btn-ghost btn-sm'
+    btnEdit.textContent = '✏️ Editar'
+    btnEdit.onclick = () => openApiMockModal(JSON.stringify(m))
+
+    const btnDup = document.createElement('button')
+    btnDup.className = 'btn btn-duplicate btn-sm'
+    btnDup.textContent = '📋 Duplicar'
+    btnDup.onclick = () => duplicateMock(JSON.stringify(m))
+
+    const btnToggle = document.createElement('button')
+    btnToggle.className = `btn btn-${m.enabled ? 'warning' : 'success'} btn-sm`
+    btnToggle.textContent = m.enabled ? '⏸ Desativar' : '▶ Ativar'
+    btnToggle.onclick = () => toggleMock(id, m.enabled)
+
+    const btnView = document.createElement('button')
+    btnView.className = 'btn btn-ghost btn-sm'
+    btnView.textContent = '👁 Payload'
+    btnView.onclick = () => viewDoc(JSON.stringify(m.payload || {}))
+
+    footer.appendChild(btnEdit)
+    footer.appendChild(btnDup)
+    footer.appendChild(btnToggle)
+    footer.appendChild(btnView)
+
+    if (allowDelete) {
+      const btnDel = document.createElement('button')
+      btnDel.className = 'btn btn-danger btn-sm'
+      btnDel.textContent = '🗑'
+      btnDel.onclick = () => del(id)
+      footer.appendChild(btnDel)
+    }
+
+    card.appendChild(footer)
+    container.appendChild(card)
+  })
 }
 
 async function toggleMock(id, current) {
-  await api('updateOne', { collection: 'mocks', filter: { _id: id }, update: { $set: { enabled: !current } } })
-  toast(!current ? 'Mock ativado' : 'Mock desativado', !current ? 'success' : 'info')
-  load()
+  try {
+    await api('updateOne', { collection: 'mocks', filter: { _id: id }, update: { $set: { enabled: !current } } })
+    toast(!current ? 'Mock ativado' : 'Mock desativado', !current ? 'success' : 'info')
+    load()
+  } catch (e) { toast('Erro ao alterar mock: ' + e.message, 'error') }
 }
 
 const MOCK_TYPES = {
@@ -1449,17 +1602,26 @@ function detectMockType(m) {
   return 'xmock'
 }
 
-function openApiMockModal(jsonStr = null) {
+function openApiMockModal(jsonStr = null, isDuplicate = false) {
   const m = jsonStr ? JSON.parse(jsonStr) : null
-  document.getElementById('modalApiTitle').textContent = m ? 'Editar API Mock' : 'Novo API Mock'
-  document.getElementById('apiMockEditId').value = m ? (m._id?.$oid || m._id || '') : ''
-  document.getElementById('apiMockId').value = m ? (m._id?.$oid || m._id || '') : ''
-  document.getElementById('apiMockId').disabled = !!m
+  const isEdit = !!m && !isDuplicate && (m._id?.$oid || m._id)
+
+  if (isDuplicate) {
+    document.getElementById('modalApiTitle').textContent = '📋 Duplicar API Mock'
+  } else {
+    document.getElementById('modalApiTitle').textContent = isEdit ? 'Editar API Mock' : 'Novo API Mock'
+  }
+
+  document.getElementById('apiMockEditId').value = isEdit ? (m._id?.$oid || m._id || '') : ''
+  document.getElementById('apiMockId').value = isEdit ? (m._id?.$oid || m._id || '') : ''
+  document.getElementById('apiMockId').disabled = isEdit
   document.getElementById('apiMockDesc').value = m?.description || ''
   document.getElementById('apiMockEndpointId').value = m?.externalMockProperties?.endpointId || ''
   document.getElementById('apiMockUsers').value = (m?.externalMockProperties?.allowedUsers || []).join(', ')
   document.getElementById('apiMockEnabled').checked = m ? m.enabled : true
   document.getElementById('catalogSelect').value = ''
+  // Limpa o textarea de importação GraphQL/resposta ao abrir modal
+  document.getElementById('graphqlContract').value = ''
   loadCatalog().then(() => setMockType(m ? detectMockType(m) : 'webclient'))
   document.getElementById('modalApiMock').classList.add('open')
   setTimeout(() => { editors.apiPayload.refresh(); setVal('apiPayload', m?.payload || {}) }, 30)
@@ -1473,7 +1635,20 @@ async function saveApiMock() {
   const users = document.getElementById('apiMockUsers').value.split(',').map(s => s.trim()).filter(Boolean)
   const enabled = document.getElementById('apiMockEnabled').checked
   let payload
-  try { payload = JSON.parse(getVal('apiPayload')) } catch { alert('Payload JSON inválido'); return }
+  try { payload = JSON.parse(getVal('apiPayload')) } catch { toast('Payload JSON inválido', 'error'); return }
+
+  // Validação de ID obrigatório para webclient e xmock
+  if (!editId && currentMockType !== 'external' && !id) {
+    toast('O campo ID é obrigatório para este tipo de mock', 'error')
+    document.getElementById('apiMockId').focus()
+    return
+  }
+  // Validação de endpointId obrigatório para external
+  if (currentMockType === 'external' && !endpointId) {
+    toast('O campo EndpointId é obrigatório', 'error')
+    document.getElementById('apiMockEndpointId').focus()
+    return
+  }
 
   const doc = { type: currentMockType, description: desc, enabled, payload, externalMockProperties: endpointId ? { endpointId, allowedUsers: users } : null }
 
@@ -1488,38 +1663,106 @@ async function saveApiMock() {
     document.getElementById('apiMockId').disabled = false
     toast('Mock salvo com sucesso!')
     load()
-  } catch (e) { alert('Erro: ' + e.message) }
+  } catch (e) { toast('Erro ao salvar mock: ' + e.message, 'error') }
 }
 
 // ── VIEW KAFKA INBOUND ──
 function renderKafkaInbound(docs) {
   const tbody = document.getElementById('tbody-kafka-inbound')
-  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum evento encontrado</td></tr>'; return }
-  tbody.innerHTML = docs.map(m => {
+  tbody.innerHTML = ''
+  if (!docs.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum evento encontrado</td></tr>'
+    return
+  }
+
+  docs.forEach(m => {
     const id = m._id?.$oid || m._id || ''
     const payloadPreview = JSON.stringify(m.payload || {}).slice(0, 80)
-    const keyDisplay = m.key == null ? '—' : (typeof m.key === 'object' ? JSON.stringify(m.key) : m.key)
-    return `<tr>
-      <td style="font-weight:600">${m.topic || '—'}</td>
-      <td class="json-cell" title="${keyDisplay}">${keyDisplay}</td>
-      <td class="json-cell">${payloadPreview}${payloadPreview.length >= 80 ? '…' : ''}</td>
-      <td><span class="badge ${m.processed ? 'badge-done' : 'badge-pending'}">${m.processed ? '✓ Processado' : '⏳ Pendente'}</span></td>
-      <td style="font-size:12px;color:var(--muted)">${formatDate(m.createdAt)}</td>
-      <td><div class="actions">
-        <button class="btn btn-ghost btn-sm" onclick='viewDoc(${JSON.stringify(JSON.stringify(m.payload || {}))})'>👁</button>
-        <button class="btn btn-ghost btn-sm" onclick='openKafkaInboundModal(${JSON.stringify(JSON.stringify(m))})'>📋 Usar como modelo</button>
-        ${m.processed ? `<button class="btn btn-warning btn-sm" onclick='reprocess("${id}")'>↺ Reprocessar</button>` : ''}
-        ${allowDelete ? `<button class="btn btn-danger btn-sm" onclick='del("${id}")'>🗑</button>` : ''}
-      </div></td>
-    </tr>`
-  }).join('')
+    const keyDisplay = m.key == null ? '—' : (typeof m.key === 'object' ? JSON.stringify(m.key) : String(m.key))
+
+    const tr = document.createElement('tr')
+
+    // Tópico
+    const tdTopic = document.createElement('td')
+    tdTopic.style.fontWeight = '600'
+    tdTopic.textContent = m.topic || '—'
+
+    // Key
+    const tdKey = document.createElement('td')
+    tdKey.className = 'json-cell'
+    tdKey.title = keyDisplay
+    tdKey.textContent = keyDisplay
+
+    // Payload preview
+    const tdPayload = document.createElement('td')
+    tdPayload.className = 'json-cell'
+    tdPayload.textContent = payloadPreview + (payloadPreview.length >= 80 ? '…' : '')
+
+    // Status badge
+    const tdStatus = document.createElement('td')
+    const badge = document.createElement('span')
+    badge.className = `badge ${m.processed ? 'badge-done' : 'badge-pending'}`
+    badge.textContent = m.processed ? '✓ Processado' : '⏳ Pendente'
+    tdStatus.appendChild(badge)
+
+    // Data
+    const tdDate = document.createElement('td')
+    tdDate.style.cssText = 'font-size:12px;color:var(--muted)'
+    tdDate.textContent = formatDate(m.createdAt)
+
+    // Ações
+    const tdActions = document.createElement('td')
+    const actions = document.createElement('div')
+    actions.className = 'actions'
+
+    const btnView = document.createElement('button')
+    btnView.className = 'btn btn-ghost btn-sm'
+    btnView.textContent = '👁'
+    btnView.title = 'Ver payload'
+    btnView.onclick = () => viewDoc(JSON.stringify(m.payload || {}))
+
+    const btnModel = document.createElement('button')
+    btnModel.className = 'btn btn-ghost btn-sm'
+    btnModel.textContent = '📋 Usar como modelo'
+    btnModel.onclick = () => openKafkaInboundModal(JSON.stringify(m))
+
+    actions.appendChild(btnView)
+    actions.appendChild(btnModel)
+
+    if (m.processed) {
+      const btnReprocess = document.createElement('button')
+      btnReprocess.className = 'btn btn-warning btn-sm'
+      btnReprocess.textContent = '↺ Reprocessar'
+      btnReprocess.onclick = () => reprocess(id)
+      actions.appendChild(btnReprocess)
+    }
+
+    if (allowDelete) {
+      const btnDel = document.createElement('button')
+      btnDel.className = 'btn btn-danger btn-sm'
+      btnDel.textContent = '🗑'
+      btnDel.onclick = () => del(id)
+      actions.appendChild(btnDel)
+    }
+
+    tdActions.appendChild(actions)
+
+    tr.appendChild(tdTopic)
+    tr.appendChild(tdKey)
+    tr.appendChild(tdPayload)
+    tr.appendChild(tdStatus)
+    tr.appendChild(tdDate)
+    tr.appendChild(tdActions)
+    tbody.appendChild(tr)
+  })
 }
 
 function openKafkaInboundModal(jsonStr = null) {
   const m = jsonStr ? JSON.parse(jsonStr) : null
-  document.getElementById('modalKafkaTitle').textContent = m ? 'Usar como modelo' : 'Novo Evento Kafka'
+  document.getElementById('modalKafkaTitle').textContent = m ? 'Novo Evento Kafka' : 'Novo Evento Kafka'
+  document.getElementById('kafkaModelBadge').style.display = m ? 'inline-block' : 'none'
   document.getElementById('kafkaTopic').value = m?.topic || ''
-  document.getElementById('kafkaKey').value = m?.key || ''
+  document.getElementById('kafkaKey').value = m?.key != null ? m.key : ''
   document.getElementById('modalKafkaInbound').classList.add('open')
   setTimeout(() => { editors.kafkaPayload.refresh(); setVal('kafkaPayload', m?.payload || {}) }, 30)
 }
@@ -1543,24 +1786,29 @@ function convertDatesInPayload(obj) {
 }
 
 async function saveKafkaInbound() {
+  const btn = document.querySelector('#modalKafkaInbound .btn-primary')
   const topic = document.getElementById('kafkaTopic').value.trim()
   const key = document.getElementById('kafkaKey').value.trim() || null
-  if (!topic) { alert('Informe o tópico'); return }
+  if (!topic) { toast('Informe o tópico', 'error'); document.getElementById('kafkaTopic').focus(); return }
   let payload
-  try { payload = JSON.parse(getVal('kafkaPayload')) } catch { alert('Payload JSON inválido'); return }
+  try { payload = JSON.parse(getVal('kafkaPayload')) } catch { toast('Payload JSON inválido', 'error'); return }
   payload = convertDatesInPayload(payload)
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'
   try {
     await api('insertOne', { collection: 'kafka_messages_mock_inbound', document: { topic, key, payload, processed: false, createdAt: new Date().toISOString() } })
     document.getElementById('modalKafkaInbound').classList.remove('open')
     toast('Evento criado!')
     load()
-  } catch (e) { alert('Erro: ' + e.message) }
+  } catch (e) { toast('Erro ao criar evento: ' + e.message, 'error') }
+  finally { btn.disabled = false; btn.textContent = 'Enviar Evento' }
 }
 
 async function reprocess(id) {
-  await api('updateOne', { collection: 'kafka_messages_mock_inbound', filter: { _id: id }, update: { $set: { processed: false } } })
-  toast('Evento marcado para reprocessamento', 'info')
-  load()
+  try {
+    await api('updateOne', { collection: 'kafka_messages_mock_inbound', filter: { _id: id }, update: { $set: { processed: false } } })
+    toast('Evento marcado para reprocessamento', 'info')
+    load()
+  } catch (e) { toast('Erro ao reprocessar: ' + e.message, 'error') }
 }
 
 // ── VIEW KAFKA OUTBOUND ──
@@ -1602,7 +1850,7 @@ function closeModal() { document.getElementById('modalDoc').classList.remove('op
 
 async function save() {
   let doc
-  try { doc = JSON.parse(getVal('main')) } catch { alert('JSON inválido'); return }
+  try { doc = JSON.parse(getVal('main')) } catch { toast('JSON inválido', 'error'); return }
   try {
     if (state.editId) {
       const { _id, ...rest } = doc
@@ -1613,13 +1861,16 @@ async function save() {
       await api('insertOne', { collection: state.collection, document: doc })
     }
     toast('Documento salvo!'); closeModal(); load()
-  } catch (e) { alert('Erro: ' + e.message) }
+  } catch (e) { toast('Erro ao salvar: ' + e.message, 'error') }
 }
 
 async function del(id) {
   if (!confirm('Deletar este documento?')) return
-  await api('deleteOne', { collection: state.collection, filter: { _id: id } })
-  load()
+  try {
+    await api('deleteOne', { collection: state.collection, filter: { _id: id } })
+    toast('Documento deletado', 'info')
+    load()
+  } catch (e) { toast('Erro ao deletar: ' + e.message, 'error') }
 }
 
 // ── UTILS ──
@@ -1628,9 +1879,130 @@ function formatDate(val) {
   try { return new Date(val.$date || val).toLocaleString('pt-BR') } catch { return String(val) }
 }
 
+// ── BACKUP / RESTAURAÇÃO ──
+function backupDocs() {
+  if (!state.docs.length) { toast('Nenhum documento para exportar', 'info'); return }
+
+  const backup = {
+    _meta: {
+      database: state.db,
+      collection: state.collection,
+      exportedAt: new Date().toISOString(),
+      total: state.docs.length
+    },
+    documents: state.docs
+  }
+
+  const json = JSON.stringify(backup, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+
+  const date = new Date().toISOString().slice(0, 10)
+  const filename = `backup_${state.db}_${state.collection}_${date}.json`
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+
+  toast(`Backup salvo: ${filename}`)
+}
+
+async function restoreDocs(event) {
+  const file = event.target.files[0]
+  // Limpa o input para permitir reimportar o mesmo arquivo
+  event.target.value = ''
+  if (!file) return
+
+  let backup
+  try {
+    backup = JSON.parse(await file.text())
+  } catch {
+    toast('Arquivo JSON inválido', 'error')
+    return
+  }
+
+  // Aceita tanto o formato com _meta quanto um array direto
+  const docs = Array.isArray(backup) ? backup : backup.documents
+  if (!Array.isArray(docs) || !docs.length) {
+    toast('Nenhum documento encontrado no arquivo', 'error')
+    return
+  }
+
+  // Mostra modal de confirmação com opções
+  const meta = backup._meta
+  const infoLine = meta
+    ? `Arquivo: ${meta.database}/${meta.collection} — ${meta.total} documentos (${meta.exportedAt?.slice(0,10)})`
+    : `${docs.length} documentos sem metadados`
+
+  document.getElementById('restoreInfo').textContent = infoLine
+  document.getElementById('restoreCount').textContent = docs.length
+  document.getElementById('restoreTarget').textContent = `${state.db} / ${state.collection}`
+  document.getElementById('modalRestore').classList.add('open')
+
+  // Armazena temporariamente os docs para uso pelos botões do modal
+  window._pendingRestoreDocs = docs
+}
+
+async function confirmRestore(mode) {
+  const docs = window._pendingRestoreDocs
+  if (!docs) return
+  document.getElementById('modalRestore').classList.remove('open')
+
+  const btnLabel = mode === 'replace' ? 'Substituindo...' : 'Mesclando...'
+  toast(btnLabel, 'info')
+
+  try {
+    if (mode === 'replace') {
+      // Deleta todos os documentos da collection antes de inserir
+      const current = await api('find', { collection: state.collection, limit: 5000 })
+      for (const d of current.documents) {
+        const id = d._id?.$oid || d._id
+        if (id) await api('deleteOne', { collection: state.collection, filter: { _id: id } })
+      }
+    }
+
+    let inserted = 0
+    let skipped  = 0
+    for (const doc of docs) {
+      try {
+        await api('insertOne', { collection: state.collection, document: doc })
+        inserted++
+      } catch {
+        // Em modo mesclar, ignora duplicatas silenciosamente
+        skipped++
+      }
+    }
+
+    const msg = skipped > 0
+      ? `Restauração concluída: ${inserted} inseridos, ${skipped} ignorados (duplicatas)`
+      : `Restauração concluída: ${inserted} documentos inseridos`
+    toast(msg)
+    load()
+  } catch (e) {
+    toast('Erro na restauração: ' + e.message, 'error')
+  } finally {
+    window._pendingRestoreDocs = null
+  }
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('login').style.display !== 'none') connect()
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); const s = document.getElementById('search'); if (s) { s.focus(); s.select() } }
+  if (e.key === 'Escape') {
+    const open = document.querySelector('.overlay.open')
+    if (open) open.classList.remove('open')
+    if (document.getElementById('changeColOverlay').style.display === 'flex')
+      document.getElementById('changeColOverlay').style.display = 'none'
+  }
+})
+
+// Fechar modal ao clicar no backdrop
+document.querySelectorAll('.overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open')
+  })
 })
 
 // ── SETTINGS ──
@@ -1642,6 +2014,7 @@ function setCfgTab(tab) {
     document.getElementById(`cfg-tab-${t}`).classList.toggle('active', t === tab)
     document.getElementById(`cfg-${t}`).style.display = t === tab ? 'block' : 'none'
   })
+  document.getElementById('cfgSaveBtn').textContent = tab === 'proxy' ? 'Salvar Proxy' : 'Salvar Databases'
 }
 
 async function openSettings() {
@@ -1672,9 +2045,18 @@ async function saveSettings() {
     if (currentCfgTab === 'proxy') {
       const port = document.getElementById('cfgPort').value.trim()
       const catalogUrl = document.getElementById('cfgCatalogUrl').value.trim()
-      const allowDelete = document.getElementById('cfgAllowDelete').checked
+      const newAllowDelete = document.getElementById('cfgAllowDelete').checked
       if (!port) { alert('Porta é obrigatória'); return }
-      await fetch(`${PROXY}/save-config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ PORT: port, ENDPOINTS_CATALOG_URL: catalogUrl, ALLOW_DELETE: allowDelete }) })
+      await fetch(`${PROXY}/save-config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ PORT: port, ENDPOINTS_CATALOG_URL: catalogUrl, ALLOW_DELETE: newAllowDelete }) })
+      // Sincroniza o estado local e re-renderiza para refletir mudança de allowDelete
+      allowDelete = newAllowDelete
+      filterDocs()
+      const currentPort = PROXY.split(':').pop()
+      if (port !== currentPort) {
+        document.getElementById('modalSettings').classList.remove('open')
+        toast('⚠️ Porta alterada — reinicie o proxy (end.bat + start.bat) para aplicar', 'info')
+        return
+      }
     } else {
       const raw = document.getElementById('cfgDatabases').value
       let databases
@@ -1697,15 +2079,34 @@ async function saveSettings() {
 
 // ── INIT ──
 ;(async () => {
+  // Quando servido via HTTP, campo de porta e badge de status proxy não fazem sentido
+  const isHttp = window.location.protocol !== 'file:'
+  if (isHttp) {
+    const fg = document.getElementById('fg-proxyPort')
+    if (fg) fg.style.display = 'none'
+    const ps = document.getElementById('proxyStatus')
+    if (ps) ps.style.display = 'none'
+  }
+
   try {
     const { databases } = await fetch(`${PROXY}/databases`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json())
     dbList = databases
     const dbSel = document.getElementById('database')
     dbSel.innerHTML = databases.map(d => `<option value="${d.name}">${d.name}</option>`).join('')
     onDbChange()
+    if (!isHttp) {
+      document.getElementById('proxyStatusDot').style.background = 'var(--success)'
+      document.getElementById('proxyStatusText').textContent = 'Proxy online'
+      document.getElementById('proxyStatusText').style.color = 'var(--success)'
+    }
   } catch {
-    document.getElementById('database').innerHTML = '<option value="">Proxy não encontrado — rode start.bat</option>'
+    document.getElementById('database').innerHTML = '<option value="">Proxy não encontrado — rode run.bat / run.sh</option>'
     document.getElementById('collectionInput').innerHTML = '<option value=""></option>'
+    if (!isHttp) {
+      document.getElementById('proxyStatusDot').style.background = 'var(--danger)'
+      document.getElementById('proxyStatusText').textContent = 'Proxy offline — execute run.bat / run.sh'
+      document.getElementById('proxyStatusText').style.color = 'var(--danger)'
+    }
   }
 
   const saved = loadLoginData()

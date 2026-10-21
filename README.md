@@ -1,6 +1,6 @@
 # Mock Manager
 
-Interface visual para gerenciar mocks de APIs e eventos Kafka armazenados no MongoDB. Roda localmente via um proxy Node.js que intermedia a conexão com o banco — sem expor credenciais no browser.
+Interface visual para gerenciar mocks de APIs e eventos Kafka armazenados no MongoDB.
 
 ## Pré-requisitos
 
@@ -9,39 +9,98 @@ Interface visual para gerenciar mocks de APIs e eventos Kafka armazenados no Mon
 
 ---
 
-## Iniciando
+## Como rodar
 
-Dê dois cliques em `start.bat` ou execute no terminal:
+### Windows
+
+Dê dois cliques em `run.bat` — ou execute no terminal:
 
 ```bat
-start.bat
+run.bat
 ```
 
-O script vai:
-1. Criar o `config.txt` automaticamente a partir do `config-padrao.txt` se ele não existir
-2. Instalar as dependências (`npm install`) se `node_modules` não existir
-3. Subir o proxy na porta configurada
-4. Abrir o `index.html` no navegador padrão
+O browser abre automaticamente em `http://localhost:3333`.
+
+Para encerrar:
+
+```bat
+stop.bat
+```
 
 ---
 
-## Encerrando
+### Linux
 
-Dê dois cliques em `end.bat` ou execute no terminal:
-
-```bat
-end.bat
+```bash
+chmod +x run.sh stop.sh
+./run.sh
 ```
 
-O script encerra o processo do proxy que estiver rodando na porta configurada.
+Para encerrar:
+
+```bash
+./stop.sh
+```
+
+---
+
+### WSL (Windows Subsystem for Linux)
+
+```bash
+chmod +x run.sh stop.sh
+./run.sh
+```
+
+O script detecta WSL automaticamente e abre `http://localhost:3333` no browser do Windows.
+
+Para encerrar:
+
+```bash
+./stop.sh
+```
+
+> **Problema de DNS no WSL?** Se o browser não conectar via `localhost`, veja a seção [Problema de DNS no WSL](#problema-de-dns-no-wsl) abaixo.
+
+---
+
+### Via npm
+
+```bash
+cd app
+npm install
+npm start
+```
+
+Acesse `http://localhost:3333` no browser.
+
+---
+
+## Estrutura do projeto
+
+```
+mock-manager/
+├── run.bat       ← Iniciar no Windows  (duplo clique)
+├── run.sh        ← Iniciar no Linux/WSL
+├── stop.bat      ← Encerrar no Windows
+├── stop.sh       ← Encerrar no Linux/WSL
+├── README.md
+└── app/          ← Código fonte (não precisa mexer aqui)
+    ├── proxy.js
+    ├── index.html
+    ├── databases.json
+    ├── config-padrao.txt
+    ├── config.txt        (gerado automaticamente, ignorado pelo git)
+    ├── package.json
+    └── ...
+```
 
 ---
 
 ## Configuração
 
-O arquivo `config.txt` é ignorado pelo git (não é versionado). Na primeira execução ele é criado automaticamente a partir do `config-padrao.txt`.
+Na primeira execução, `app/config.txt` é criado automaticamente a partir de `app/config-padrao.txt`.
 
-Para ajustar as configurações, edite o `config.txt`:
+Para ajustar, edite `app/config.txt`:
 
 ```
 PORT=3333
@@ -49,40 +108,31 @@ ENDPOINTS_CATALOG_URL=
 ALLOW_DELETE=true
 ```
 
-| Chave                  | Descrição                                                                                 | Padrão |
-|------------------------|-------------------------------------------------------------------------------------------|--------|
-| `PORT`                 | Porta em que o proxy vai rodar                                                            | `3333` |
-| `ENDPOINTS_CATALOG_URL`| URL de uma API que retorna um catálogo de endpoints (opcional, veja seção abaixo)        | vazio  |
-| `ALLOW_DELETE`         | Habilita ou desabilita o botão de deletar documentos na interface                        | `true` |
+| Chave | Descrição | Padrão |
+|---|---|---|
+| `PORT` | Porta do servidor | `3333` |
+| `ENDPOINTS_CATALOG_URL` | URL do catálogo de endpoints (opcional) | vazio |
+| `ALLOW_DELETE` | Habilita botão de deletar documentos | `true` |
+
+As configurações também podem ser editadas pela interface em ⚙️ **Configurações**.
+
+> Alterações de porta só têm efeito após reiniciar (`stop` + `run`).
 
 ---
 
 ## Configurando os Databases
 
-O arquivo `databases.json` define quais databases e collections aparecem no seletor da tela de login.
-
-Edite conforme o seu projeto:
-
-```json
-[
-  {
-    "name": "nome-do-seu-database",
-    "collections": [
-      "mocks",
-      "kafka_messages_mock_inbound",
-      "kafka_messages_mock"
-    ]
-  }
-]
-```
-
-Você pode adicionar múltiplos databases:
+Edite `app/databases.json` ou use ⚙️ **Configurações → Databases** na interface:
 
 ```json
 [
   {
     "name": "meu-servico",
-    "collections": ["mocks", "kafka_messages_mock_inbound", "kafka_messages_mock"]
+    "collections": [
+      "mocks",
+      "kafka_messages_mock_inbound",
+      "kafka_messages_mock"
+    ]
   },
   {
     "name": "outro-servico",
@@ -93,95 +143,81 @@ Você pode adicionar múltiplos databases:
 
 ---
 
-## Conectando
+## Problema de DNS no WSL
+
+Quando o proxy roda no WSL e o browser está no Windows, `localhost` no browser aponta para o Windows — não para o WSL.
+
+O `run.sh` já resolve isso automaticamente abrindo `http://localhost:3333` via `cmd.exe` do Windows. Na maioria dos casos o WSL2 faz bridge de `localhost` automaticamente.
+
+Se mesmo assim não conectar:
+
+1. Descubra o IP do WSL:
+   ```bash
+   hostname -I
+   # ex: 172.26.144.10
+   ```
+
+2. Acesse no browser Windows: `http://172.26.144.10:3333`
+
+3. Para fixar: adicione ao `C:\Windows\System32\drivers\etc\hosts` (como Administrador):
+   ```
+   172.26.144.10  wsl.local
+   ```
+   E acesse `http://wsl.local:3333`.
+
+> O IP do WSL pode mudar a cada reinicialização do Windows.
+
+---
+
+## Conectando ao MongoDB
 
 Na tela de login, preencha:
 
-- **MongoDB URI** — a URI de conexão com o banco (ex: `mongodb+srv://user:pass@host/db` ou `mongodb://localhost:27017`)
-- **Database** — selecione na lista gerada pelo `databases.json` ou clique em "Digitar manualmente"
-- **Collection** — selecione a collection que deseja gerenciar
-- **Porta do Proxy** — deve ser a mesma do `config.txt` (padrão: `3333`)
+- **MongoDB URI** — ex: `mongodb+srv://user:pass@host/db` ou `mongodb://localhost:27017`
+- **Database** — selecione na lista ou clique em "Digitar manualmente"
+- **Collection** — collection que deseja gerenciar
 
 ---
 
 ## Collections especiais
 
-O Mock Manager tem interfaces dedicadas para três collections. Para outras collections, exibe uma tabela genérica.
-
 ### `mocks` — API Mocks
 
-Gerencia mocks de respostas HTTP. Suporta três tipos:
+Três tipos de mock:
 
 #### 🌐 WebClient Genérico
-Intercepta chamadas de saída do serviço para APIs externas via `WebClient`. O `_id` do documento deve ser exatamente `MÉTODO:/caminho` — e deve ser **idêntico** ao `endpointId` usado nos mocks por usuário para o mesmo endpoint:
+`_id` = `MÉTODO:/caminho`. Fallback para chamadas de saída sem mock por usuário.
 
 ```json
 {
   "_id": "GET:/v1/products/stock-status",
-  "description": "Mock status de estoque",
   "enabled": true,
-  "payload": {
-    "productId": "prod-001",
-    "available": true,
-    "quantity": 42
-  },
+  "payload": { "available": true, "quantity": 42 },
   "externalMockProperties": null
 }
 ```
 
-Ative no `application-local.yml` do serviço:
-```yaml
-mocks:
-  webclient:
-    enabled: true
-```
-
 #### 👤 WebClient por Usuário
-Retorna payloads diferentes por identificador de recurso. O `endpointId` é o mesmo padrão `MÉTODO:/caminho` e `allowedUsers` lista os identificadores que devem receber esse mock:
+Retorna payload diferente por identificador de recurso.
 
 ```json
 {
   "_id": "mock-pricing-order-001",
-  "description": "Mock precificação para pedido order-001",
   "enabled": true,
-  "payload": {
-    "orderId": "order-001",
-    "discount": 10.5,
-    "finalPrice": 89.50
-  },
+  "payload": { "orderId": "order-001", "finalPrice": 89.50 },
   "externalMockProperties": {
     "endpointId": "GET:/v1/orders/pricing",
-    "allowedUsers": ["order-001", "order-002"]
+    "allowedUsers": ["order-001"]
   }
 }
 ```
 
 #### 🔖 X-MOCK-ID
-Intercepta requisições **recebidas** pelo próprio serviço. O cliente envia o header `X-MOCK-ID` com o `_id` do documento e recebe o payload cadastrado — sem executar nenhuma lógica de negócio:
+Intercepta requisições recebidas pelo serviço via header `X-MOCK-ID`.
 
-```json
-{
-  "_id": "checkout-mock",
-  "description": "Mock resposta de checkout",
-  "enabled": true,
-  "payload": {
-    "data": {
-      "checkout": {
-        "orderId": "order-001",
-        "approved": true,
-        "status": "PENDING"
-      }
-    }
-  },
-  "externalMockProperties": null
-}
-```
-
-Uso via curl:
 ```bash
-curl -X POST http://localhost:8080/my-service/checkout \
+curl -X POST http://localhost:8080/checkout \
   -H "X-MOCK-ID: checkout-mock" \
-  -H "Content-Type: application/json" \
   -d '{"orderId": "order-001"}'
 ```
 
@@ -189,7 +225,7 @@ curl -X POST http://localhost:8080/my-service/checkout \
 
 ### `kafka_messages_mock_inbound` — Eventos Kafka de entrada
 
-Documentos que o serviço consome como se fossem mensagens Kafka recebidas. Campos esperados:
+Documentos consumidos pelo serviço como mensagens Kafka simuladas.
 
 ```json
 {
@@ -201,83 +237,15 @@ Documentos que o serviço consome como se fossem mensagens Kafka recebidas. Camp
 }
 ```
 
-Na interface é possível criar novos eventos, usar um existente como modelo e reprocessar eventos já processados (reseta `processed` para `false`).
-
----
-
 ### `kafka_messages_mock` — Mensagens Kafka de saída
 
-Visualização somente leitura das mensagens que o serviço publicou no Kafka durante o ambiente local. Campos esperados:
-
-```json
-{
-  "topic": "order-confirmed",
-  "key": "order-001",
-  "value": { "orderId": "order-001", "status": "CONFIRMED" },
-  "timestamp": "2024-01-15T10:05:00.000Z"
-}
-```
-
----
-
-## Catálogo de Endpoints (opcional)
-
-Se `ENDPOINTS_CATALOG_URL` estiver configurado, o formulário de criação de mock exibe um seletor de endpoints, preenchendo automaticamente o ID e o payload de exemplo.
-
-A URL deve retornar um JSON no seguinte formato:
-
-```json
-[
-  {
-    "endpointId": "GET:/v1/products/stock-status",
-    "description": "Consulta status de estoque",
-    "type": "webclient",
-    "examplePayload": {
-      "productId": "prod-001",
-      "available": true,
-      "quantity": 42
-    }
-  },
-  {
-    "endpointId": "GET:/v1/orders/pricing",
-    "description": "Consulta precificação de pedido",
-    "type": "external",
-    "examplePayload": {
-      "orderId": "order-001",
-      "finalPrice": 89.50
-    }
-  }
-]
-```
-
-O campo `type` deve ser `webclient` ou `external` para aparecer na aba correta do formulário.
+Somente leitura. Mensagens publicadas pelo serviço durante execução local.
 
 ---
 
 ## Prioridade dos mocks
 
-Quando existem mocks do tipo **Por Usuário** e **WebClient Genérico** para o mesmo endpoint, a precedência é:
+1. **Por Usuário** — se o identificador estiver em `allowedUsers`
+2. **WebClient Genérico** — fallback (o `_id` deve ser idêntico ao `endpointId` dos mocks por usuário)
 
-1. **Por Usuário** — executado se o identificador estiver em `allowedUsers`
-2. **WebClient Genérico** — executado quando o identificador não está em nenhum mock por usuário
-
-O `_id` do mock genérico deve ser **idêntico** ao `externalMockProperties.endpointId` dos mocks por usuário para que a prioridade funcione corretamente.
-
-A interface exibe avisos visuais nos cards quando há conflito entre os dois tipos para o mesmo endpoint.
-
----
-
-## Estrutura de arquivos
-
-```
-mock-manager/
-├── index.html          # Interface visual (abre direto no browser)
-├── proxy.js            # Servidor Node.js que intermedia o MongoDB
-├── databases.json      # Lista de databases e collections do projeto
-├── config-padrao.txt   # Template de configuração (versionado)
-├── config.txt          # Configuração local (ignorado pelo git)
-├── start.bat           # Inicia o proxy e abre a interface
-├── end.bat             # Encerra o proxy
-├── package.json        # Dependências Node.js
-└── .gitignore
-```
+A interface exibe avisos visuais nos cards quando detecta conflito.

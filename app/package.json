@@ -1,0 +1,11 @@
+{
+  "name": "mock-manager",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node proxy.js",
+    "stop": "node -e \"const fs=require('fs'),{execSync}=require('child_process');const cfg=fs.existsSync('./config.txt')?fs.readFileSync('./config.txt','utf-8'):'PORT=3333';const port=(cfg.match(/^PORT=(.+)/m)||[,'3333'])[1].trim();try{const pid=execSync('lsof -ti tcp:'+port).toString().trim();if(pid){execSync('kill -9 '+pid);console.log('Proxy encerrado (PID '+pid+')');}else{console.log('Nenhum processo na porta '+port);}}catch{console.log('Nenhum processo encontrado.');}\""
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}

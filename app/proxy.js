@@ -1,22 +1,39 @@
 const fs = require('fs')
 const http = require('http')
 const https = require('https')
+const os = require('os')
+const path = require('path')
 const { MongoClient, ObjectId } = require('mongodb')
 
+// ── Leitura de config (suporta valores com '=' como URLs) ──────────────────────
+function parseConfig(raw) {
+  return Object.fromEntries(
+    raw.split('\n')
+       .filter(l => l.includes('='))
+       .map(l => { const [k, ...v] = l.trim().split('='); return [k.trim(), v.join('=').trim()] })
+  )
+}
+
 const config = fs.existsSync('./config.txt')
-  ? Object.fromEntries(fs.readFileSync('./config.txt', 'utf-8').split('\n').filter(l => l.includes('=')).map(l => l.trim().split('=')))
+  ? parseConfig(fs.readFileSync('./config.txt', 'utf-8'))
   : fs.existsSync('./config-padrao.txt')
-  ? Object.fromEntries(fs.readFileSync('./config-padrao.txt', 'utf-8').split('\n').filter(l => l.includes('=')).map(l => l.trim().split('=')))
+  ? parseConfig(fs.readFileSync('./config-padrao.txt', 'utf-8'))
   : {}
+
 const PORT = parseInt(config.PORT || '3333')
 const ENDPOINTS_CATALOG_URL = config.ENDPOINTS_CATALOG_URL?.trim() || ''
 const ALLOW_DELETE = (config.ALLOW_DELETE?.trim() || 'true') === 'true'
+
+// Bind em 0.0.0.0 para ser acessível no WSL e em rede local
+const HOST = '0.0.0.0'
+
 let client = null
 let db = null
 
+// ── CORS ───────────────────────────────────────────────────────────────────────
 const cors = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 }
 
@@ -36,7 +53,31 @@ const resolveId = (id) => {
   try { return new ObjectId(id) } catch { return id }
 }
 
+// ── Serve arquivo estático ─────────────────────────────────────────────────────
+function serveFile(res, filePath, contentType) {
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404)
+      res.end('Not found')
+      return
+    }
+    cors(res)
+    res.writeHead(200, { 'Content-Type': contentType })
+    res.end(data)
+  })
+}
+
 http.createServer(async (req, res) => {
+  // ── Serve index.html via GET / ─────────────────────────────────────────────
+  if (req.method === 'GET') {
+    if (req.url === '/' || req.url === '/index.html') {
+      serveFile(res, path.join(__dirname, 'index.html'), 'text/html; charset=utf-8')
+    } else {
+      res.writeHead(404); res.end('Not found')
+    }
+    return
+  }
+
   if (req.method === 'OPTIONS') { cors(res); res.writeHead(204); res.end(); return }
   if (req.method !== 'POST') { send(res, 405, { error: 'Method not allowed' }); return }
 
@@ -50,8 +91,7 @@ http.createServer(async (req, res) => {
 
     if (req.url === '/get-config') {
       const raw = fs.existsSync('./config.txt') ? fs.readFileSync('./config.txt', 'utf-8') : fs.readFileSync('./config-padrao.txt', 'utf-8')
-      const data = Object.fromEntries(raw.split('\n').filter(l => l.includes('=')).map(l => { const [k, ...v] = l.trim().split('='); return [k, v.join('=')] }))
-      send(res, 200, data)
+      send(res, 200, parseConfig(raw))
       return
     }
 
@@ -113,7 +153,7 @@ http.createServer(async (req, res) => {
     const col = db.collection(body.collection)
 
     if (req.url === '/find') {
-      const docs = await col.find(body.filter || {}).limit(body.limit || 200).toArray()
+      const docs = await col.find(body.filter || {}).limit(body.limit || 1000).toArray()
       send(res, 200, { documents: docs })
       return
     }
@@ -142,4 +182,15 @@ http.createServer(async (req, res) => {
   } catch (e) {
     send(res, 500, { error: e.message })
   }
-}).listen(PORT, () => console.log(`Mock Manager Proxy: http://localhost:${PORT}`))
+}).listen(PORT, HOST, () => {
+  const ifaces = os.networkInterfaces()
+  const ips = Object.values(ifaces)
+    .flat()
+    .filter(i => i.family === 'IPv4' && !i.internal)
+    .map(i => `  http://${i.address}:${PORT}`)
+
+  console.log(`\nMock Manager rodando em:`)
+  console.log(`  http://localhost:${PORT}`)
+  if (ips.length > 0) ips.forEach(ip => console.log(ip))
+  console.log('')
+})
